@@ -1,0 +1,1909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Perspective Prism — Constraint Engine v5.1</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Outfit:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --void:#06050f; --void-2:#0c0b18; --void-3:#12101f;
+  --surface:#191626; --surface-2:#201c30;
+  --rim:rgba(255,255,255,0.055); --rim-2:rgba(255,255,255,0.10);
+  --rim-3:rgba(255,255,255,0.16);
+  --f-cog:#7b9cf7; --f-sen:#52edb8; --f-emo:#f0607a; --f-exp:#f7b055; --f-bel:#cc82f8;
+  --f-cog-dim:rgba(123,156,247,0.10); --f-sen-dim:rgba(82,237,184,0.10);
+  --f-emo-dim:rgba(240,96,122,0.10); --f-exp-dim:rgba(247,176,85,0.10);
+  --f-bel-dim:rgba(204,130,248,0.10);
+  --gold:#c9a558; --gold-dim:rgba(201,165,88,0.10); --gold-pale:rgba(201,165,88,0.045);
+  --gold-rim:rgba(201,165,88,0.26);
+  --ink:rgba(255,255,255,0.93); --ink-80:rgba(255,255,255,0.80);
+  --ink-55:rgba(255,255,255,0.55); --ink-35:rgba(255,255,255,0.35);
+  --ink-18:rgba(255,255,255,0.18); --ink-08:rgba(255,255,255,0.08);
+  --nj:#2eb8c8; --nj-dim:rgba(46,184,200,0.09);
+  --val:#a8d8a8; --val-dim:rgba(168,216,168,0.08);
+  --hyp:#e8a4f8; --hyp-dim:rgba(232,164,248,0.08); --hyp-rim:rgba(232,164,248,0.22);
+  --col:#f7b055; --col-dim:rgba(247,176,85,0.08); --col-rim:rgba(247,176,85,0.26);
+  --serif:'Cormorant Garamond',Georgia,serif;
+  --mono:'Space Mono',monospace;
+  --sans:'Outfit',sans-serif;
+  --ease-out:cubic-bezier(0.16,1,0.3,1);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--void);color:var(--ink);font-family:var(--sans);font-size:20px;line-height:1.8;overflow-x:hidden;min-height:100vh;}
+body::after{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");pointer-events:none;z-index:0;}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:200;padding:20px clamp(24px,5vw,72px);display:flex;justify-content:space-between;align-items:center;transition:background 0.5s,border-color 0.5s;border-bottom:1px solid transparent;}
+nav.scrolled{background:rgba(6,5,15,0.94);backdrop-filter:blur(24px);border-bottom-color:var(--rim);}
+.nav-wordmark{font-family:var(--serif);font-size:17px;font-style:italic;letter-spacing:0.01em;color:var(--ink-55);}
+.nav-wordmark strong{font-style:normal;font-weight:700;color:var(--ink-80);}
+.nav-right{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+.nav-pill{font-family:var(--mono);font-size:10px;letter-spacing:0.14em;text-transform:uppercase;padding:7px 16px;border:1px solid var(--rim-2);background:transparent;color:var(--ink-35);cursor:pointer;transition:all 0.22s;}
+.nav-pill:hover{border-color:var(--gold-rim);color:var(--gold);}
+.nav-pill.nj-on{border-color:rgba(46,184,200,0.4);color:var(--nj);background:var(--nj-dim);}
+.nav-status{font-family:var(--mono);font-size:10px;letter-spacing:0.14em;text-transform:uppercase;padding:7px 16px;border:1px solid var(--gold-rim);color:var(--gold);background:var(--gold-pale);opacity:0;transition:opacity 0.5s;}
+.nav-status.on{opacity:1;}
+
+/* HERO */
+.hero{position:relative;min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:100px clamp(28px,8vw,120px) 80px;z-index:1;overflow:hidden;}
+.hero-sup{font-family:var(--mono);font-size:11px;letter-spacing:0.24em;text-transform:uppercase;color:var(--gold);margin-bottom:32px;opacity:0;animation:riseIn 0.9s var(--ease-out) forwards 0.3s;}
+.hero-hed{font-family:var(--serif);font-size:clamp(64px,11vw,148px);font-weight:700;line-height:0.88;letter-spacing:-0.02em;color:var(--ink);margin-bottom:6px;opacity:0;animation:riseIn 1s var(--ease-out) forwards 0.5s;}
+.hero-hed-italic{font-family:var(--serif);font-size:clamp(40px,7vw,96px);font-weight:300;font-style:italic;line-height:0.95;letter-spacing:-0.01em;color:transparent;background:linear-gradient(118deg,var(--f-cog) 0%,var(--f-sen) 25%,var(--f-emo) 50%,var(--f-exp) 75%,var(--f-bel) 100%);-webkit-background-clip:text;background-clip:text;display:block;margin-bottom:44px;opacity:0;animation:riseIn 1s var(--ease-out) forwards 0.65s;}
+.hero-doctrine{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:50px;opacity:0;animation:riseIn 0.8s var(--ease-out) forwards 0.85s;}
+.doctrine-tag{display:inline-flex;align-items:center;gap:10px;padding:11px 20px;border:1px solid var(--rim-2);font-family:var(--mono);font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-35);}
+.doctrine-tag span{display:inline-block;width:4px;height:4px;background:var(--gold);border-radius:50%;}
+.hero-cta{display:flex;gap:14px;opacity:0;animation:riseIn 0.8s var(--ease-out) forwards 1s;}
+.btn-prime{font-family:var(--sans);font-size:14px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:18px 36px;background:var(--ink);color:var(--void);text-decoration:none;transition:all 0.22s;display:inline-block;}
+.btn-prime:hover{background:var(--gold);}
+.btn-ghost{font-family:var(--mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;padding:18px 32px;border:1px solid var(--rim-2);color:var(--ink-35);text-decoration:none;transition:all 0.22s;display:inline-block;}
+.btn-ghost:hover{border-color:var(--gold-rim);color:var(--gold);}
+.hero-scroll{position:absolute;bottom:40px;left:clamp(28px,8vw,120px);font-family:var(--mono);font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-18);opacity:0;animation:riseIn 0.8s var(--ease-out) forwards 1.3s;}
+.ticker-wrap{position:absolute;bottom:0;left:0;right:0;overflow:hidden;padding:14px 0;background:rgba(201,165,88,0.03);border-top:1px solid var(--gold-dim);opacity:0;animation:fadeIn 1s forwards 1.5s;}
+.ticker{display:flex;gap:0;width:max-content;animation:ticker 40s linear infinite;}
+.ticker-item{font-family:var(--mono);font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-18);padding:0 32px;white-space:nowrap;}
+.ticker-item em{color:var(--gold);font-style:normal;}
+@keyframes ticker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@keyframes riseIn{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+/* ENGINE SECTION */
+.engine-shell{position:relative;z-index:1;padding:clamp(60px,9vw,120px) clamp(28px,6vw,90px);}
+.section-eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:0.24em;text-transform:uppercase;color:var(--gold);margin-bottom:20px;}
+.section-heading{font-family:var(--serif);font-size:clamp(38px,5vw,62px);font-weight:700;line-height:1.05;letter-spacing:-0.02em;color:var(--ink);margin-bottom:18px;}
+.section-heading em{font-style:italic;font-weight:300;color:var(--gold);}
+.section-dek{font-family:var(--sans);font-size:19px;font-weight:300;color:var(--ink-55);line-height:1.75;max-width:640px;margin-bottom:40px;}
+.engine-mode-badge{display:inline-flex;align-items:center;gap:8px;padding:7px 16px;border:1px solid var(--gold-rim);font-family:var(--mono);font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--gold);margin-bottom:32px;}
+.engine-mode-badge::before{content:'';width:6px;height:6px;background:var(--gold);border-radius:50%;animation:pulse 2s ease-in-out infinite;}
+
+/* EXPAND / INTELLIGENCE PANEL */
+.expand-panel{margin-bottom:30px;padding:28px 30px;border:1px solid rgba(82,237,184,0.18);background:rgba(82,237,184,0.035);}
+.expand-label{font-family:var(--mono);font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--f-sen);margin-bottom:12px;}
+.expand-description{font-family:var(--sans);font-size:17px;font-weight:300;color:var(--ink-35);line-height:1.75;margin-bottom:18px;}
+.expand-description em{color:var(--ink-55);font-style:normal;}
+.expand-steps{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;}
+.expand-step{font-family:var(--mono);font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-18);padding:8px 16px;border:1px solid var(--rim);}
+.expand-step span{color:var(--f-sen);}
+.expand-prompt-area{display:none;}
+.expand-prompt-area.on{display:block;}
+.expand-prompt-box{width:100%;min-height:88px;padding:16px 18px;background:var(--void-3);border:1px solid rgba(82,237,184,0.15);font-family:var(--mono);font-size:13px;color:var(--ink-55);resize:vertical;outline:none;line-height:1.7;margin-bottom:10px;}
+.expand-copy-btn{font-family:var(--mono);font-size:10px;letter-spacing:0.14em;text-transform:uppercase;padding:10px 20px;border:1px solid rgba(82,237,184,0.3);background:transparent;color:var(--f-sen);cursor:pointer;transition:all 0.2s;margin-right:10px;margin-bottom:12px;}
+.expand-copy-btn:hover{background:rgba(82,237,184,0.08);}
+.expand-return-label{font-family:var(--mono);font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-18);margin-bottom:8px;margin-top:4px;}
+.expand-return-area{width:100%;min-height:80px;padding:16px 18px;background:var(--void-2);border:1px solid var(--rim-2);font-family:var(--sans);font-size:16px;font-weight:300;color:var(--ink);resize:vertical;outline:none;line-height:1.75;margin-bottom:10px;}
+.expand-return-area::placeholder{color:var(--ink-18);}
+.expand-inject-btn{font-family:var(--mono);font-size:10px;letter-spacing:0.14em;text-transform:uppercase;padding:10px 22px;border:1px solid rgba(82,237,184,0.25);background:transparent;color:rgba(82,237,184,0.6);cursor:pointer;transition:all 0.2s;}
+.expand-inject-btn:hover{border-color:var(--f-sen);color:var(--f-sen);background:rgba(82,237,184,0.06);}
+
+/* VAL PANEL */
+.val-panel{margin-bottom:28px;padding:22px 24px;border:1px solid rgba(168,216,168,0.18);background:var(--val-dim);display:none;}
+.val-panel.on{display:block;}
+.val-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+.val-label{font-family:var(--mono);font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--val);}
+.val-reset{font-family:var(--mono);font-size:9px;letter-spacing:0.14em;text-transform:uppercase;padding:5px 14px;border:1px solid rgba(168,216,168,0.2);background:transparent;color:rgba(168,216,168,0.5);cursor:pointer;transition:all 0.2s;}
+.val-reset:hover{border-color:rgba(168,216,168,0.4);color:var(--val);}
+.val-toggles{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+.val-toggle{font-family:var(--mono);font-size:10px;letter-spacing:0.14em;text-transform:uppercase;padding:7px 16px;border:1px solid rgba(168,216,168,0.15);background:transparent;color:rgba(168,216,168,0.4);cursor:pointer;transition:all 0.2s;}
+.val-toggle.on{border-color:rgba(168,216,168,0.5);background:rgba(168,216,168,0.06);color:var(--val);}
+.val-toggle:hover{border-color:rgba(168,216,168,0.3);color:rgba(168,216,168,0.7);}
+.val-explanation{font-family:var(--sans);font-size:15px;font-weight:300;color:rgba(168,216,168,0.45);line-height:1.7;}
+.val-explanation em{color:rgba(168,216,168,0.65);font-style:normal;}
+
+/* PATTERN INDICATOR */
+.pattern-indicator{display:none;margin-bottom:14px;padding:10px 18px;border:1px solid rgba(201,165,88,0.18);background:rgba(201,165,88,0.04);align-items:center;gap:10px;}
+.pattern-indicator.vis{display:flex;}
+.pattern-indicator-label{font-family:var(--mono);font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-18);}
+.pattern-indicator-name{font-family:var(--mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--gold);}
+.pattern-indicator-blend{font-family:var(--mono);font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(201,165,88,0.5);margin-left:auto;}
+
+/* SITUATION INPUT */
+.situation-block{max-width:900px;}
+.chips{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:24px;}
+.chip{font-family:var(--sans);font-size:16px;font-weight:400;padding:11px 22px;border:1px solid var(--rim-2);background:transparent;color:var(--ink-55);cursor:pointer;transition:all 0.2s;line-height:1.3;}
+.chip:hover{border-color:var(--ink-18);color:var(--ink-80);}
+.chip.on{border-color:var(--gold-rim);background:var(--gold-pale);color:var(--ink);}
+.input-row{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;margin-top:6px;}
+.sit-textarea{flex:1;min-width:260px;min-height:100px;padding:20px 22px;background:var(--void-2);border:1px solid var(--rim-2);font-family:var(--sans);font-size:18px;font-weight:300;color:var(--ink);resize:vertical;outline:none;transition:border-color 0.22s;line-height:1.8;}
+.sit-textarea::placeholder{color:var(--ink-18);}
+.sit-textarea:focus{border-color:var(--gold-rim);}
+.char-count{font-family:var(--mono);font-size:10px;letter-spacing:0.1em;color:var(--ink-18);text-align:right;margin-top:5px;transition:color 0.2s;}
+.char-count.warn{color:rgba(240,96,122,0.6);}
+.run-btn{font-family:var(--sans);font-size:14px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:20px 34px;background:var(--ink);color:var(--void);border:none;cursor:pointer;transition:all 0.22s;white-space:nowrap;display:flex;align-items:center;gap:10px;align-self:flex-end;}
+.run-btn:hover:not(:disabled){background:var(--gold);}
+.run-btn:disabled{opacity:0.35;cursor:not-allowed;}
+.run-btn:active{transform:scale(0.98);}
+.run-btn .spin{width:14px;height:14px;border:1.5px solid rgba(7,6,10,0.2);border-top-color:rgba(7,6,10,0.8);border-radius:50%;animation:spin 0.7s linear infinite;display:none;}
+.run-btn.loading .spin{display:block;}
+.run-btn.loading .rbtxt{opacity:0.6;}
+.err-bar{display:none;margin-top:14px;padding:16px 20px;border:1px solid rgba(240,96,122,0.3);background:rgba(240,96,122,0.055);font-family:var(--sans);font-size:16px;font-weight:300;color:var(--f-emo);}
+.err-bar.on{display:block;}
+.nj-strip{display:none;margin-top:18px;padding:14px 22px;border:1px solid rgba(46,184,200,0.22);background:var(--nj-dim);font-family:var(--mono);font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--nj);align-items:center;gap:16px;flex-wrap:wrap;}
+.nj-strip.on{display:flex;}
+.nj-zone-name{font-size:11px;font-weight:700;}
+.nj-zone-sub{color:rgba(46,184,200,0.55);}
+
+/* PERSPECTIVE SECTION */
+.persp-section{display:none;margin-top:60px;opacity:0;transform:translateY(22px);transition:opacity 0.6s var(--ease-out),transform 0.6s var(--ease-out);}
+.persp-section.vis{display:block;}
+.persp-section.in{opacity:1;transform:translateY(0);}
+.persp-meta{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:28px;padding-bottom:22px;border-bottom:1px solid var(--rim);flex-wrap:wrap;gap:16px;}
+.persp-sit-echo{font-family:var(--serif);font-size:16px;font-style:italic;color:var(--ink-35);margin-bottom:6px;}
+.persp-sit-echo em{color:var(--gold);font-style:normal;}
+.persp-title{font-family:var(--serif);font-size:clamp(26px,3.2vw,42px);font-weight:600;line-height:1.1;color:var(--ink);}
+.persp-title em{font-style:italic;font-weight:300;color:var(--gold);}
+.persp-instr{font-family:var(--mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-35);text-align:right;line-height:2.0;max-width:200px;opacity:0.7;}
+.persp-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--rim);}
+@media(max-width:900px){.persp-grid{grid-template-columns:repeat(3,1fr);}}
+@media(max-width:580px){.persp-grid{grid-template-columns:1fr 1fr;}}
+.p-card{background:var(--void-2);padding:30px 24px 36px;cursor:pointer;transition:background 0.2s,transform 0.18s;border:2px solid transparent;position:relative;overflow:hidden;opacity:0;transform:translateY(16px);}
+.p-card.loaded{opacity:1;transform:translateY(0);transition:background 0.2s,transform 0.18s,opacity 0.55s var(--ease-out);}
+.p-card:hover{background:var(--surface);transform:translateY(-2px);}
+.p-card.chosen{background:var(--surface);transform:translateY(-2px);border-color:rgba(255,255,255,0.06);}
+.p-card-accent{position:absolute;top:0;left:0;right:0;height:2px;transition:height 0.2s;}
+.p-card.chosen .p-card-accent{height:3px;}
+.p-card-facet{font-family:var(--mono);font-size:10px;letter-spacing:0.18em;text-transform:uppercase;margin-bottom:18px;opacity:0.55;transition:opacity 0.2s;}
+.p-card:hover .p-card-facet,.p-card.chosen .p-card-facet{opacity:0.85;}
+.p-card-q{font-family:var(--serif);font-size:20px;font-style:italic;font-weight:400;color:var(--ink);line-height:1.55;min-height:82px;margin-bottom:14px;}
+.p-card-ctx{font-family:var(--sans);font-size:14px;font-weight:300;color:var(--ink-35);line-height:1.75;min-height:40px;}
+.p-card-cue{margin-top:20px;font-family:var(--mono);font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-18);transition:color 0.2s;display:flex;align-items:center;gap:6px;}
+.p-card-cue::before{content:'→';color:var(--gold);}
+.p-card:hover .p-card-cue,.p-card.chosen .p-card-cue{color:var(--gold);}
+.hist-row{display:none;margin-top:20px;padding-top:20px;border-top:1px solid var(--rim);align-items:center;flex-wrap:wrap;gap:8px;}
+.hist-row.vis{display:flex;}
+.hist-label{font-family:var(--mono);font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-18);}
+.hist-tag{font-family:var(--mono);font-size:10px;letter-spacing:0.12em;text-transform:uppercase;padding:5px 14px;border:1px solid;opacity:0.7;}
+.injected-layer{display:none;margin-top:22px;padding:28px 30px;border:1px solid rgba(82,237,184,0.2);background:rgba(82,237,184,0.04);}
+.injected-layer.vis{display:block;}
+.injected-eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--f-sen);margin-bottom:14px;opacity:0.8;}
+.injected-text{font-family:var(--serif);font-size:20px;font-style:italic;color:var(--ink-55);line-height:1.6;}
+.injected-close{font-family:var(--mono);font-size:10px;letter-spacing:0.14em;text-transform:uppercase;padding:5px 14px;border:1px solid rgba(82,237,184,0.15);background:transparent;color:rgba(82,237,184,0.4);cursor:pointer;margin-top:14px;transition:all 0.2s;display:inline-block;}
+.injected-close:hover{border-color:rgba(82,237,184,0.3);color:var(--f-sen);}
+
+/* CONSTRAINT LAYER */
+.constraint-section{display:none;margin-top:52px;opacity:0;transform:translateY(18px);transition:opacity 0.5s var(--ease-out),transform 0.5s var(--ease-out);}
+.constraint-section.vis{display:block;}
+.constraint-section.in{opacity:1;transform:translateY(0);}
+.constraint-frame{border:1px solid var(--rim-2);background:var(--void-2);padding:36px 32px;position:relative;overflow:hidden;}
+.constraint-frame::before{content:'';position:absolute;top:0;left:0;bottom:0;width:2px;background:var(--gold);transition:background 0.3s;}
+.constraint-dim-label{font-family:var(--mono);font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--gold);margin-bottom:24px;}
+.constraint-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--rim);margin-bottom:1px;}
+@media(max-width:760px){.constraint-grid{grid-template-columns:1fr;}}
+.constraint-card{background:var(--void-3);padding:30px 26px;cursor:pointer;transition:background 0.2s,transform 0.18s;border:2px solid transparent;position:relative;}
+.constraint-card:hover{background:var(--surface);transform:translateY(-1px);}
+.constraint-card.chosen{background:var(--surface);border-color:var(--gold-rim);transform:translateY(-1px);}
+.constraint-card-type{font-family:var(--mono);font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-18);margin-bottom:16px;opacity:0.6;}
+.constraint-card-q{font-family:var(--serif);font-size:21px;font-style:italic;font-weight:400;color:var(--ink);line-height:1.55;min-height:78px;}
+.constraint-card-follow{margin-top:16px;font-family:var(--sans);font-size:16px;font-weight:300;color:var(--ink-35);line-height:1.75;max-height:0;overflow:hidden;transition:max-height 0.4s ease,margin-top 0.3s;}
+.constraint-card.chosen .constraint-card-follow{max-height:130px;}
+.tension-box{display:none;margin-top:1px;padding:34px 36px;background:var(--void-3);border:1px solid var(--gold-rim);position:relative;transition:all 0.4s var(--ease-out);}
+.tension-box::before{content:'';position:absolute;top:0;left:0;bottom:0;width:3px;background:linear-gradient(180deg,var(--f-cog),var(--f-bel));}
+.tension-box.vis{display:block;}
+.tension-eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--gold);margin-bottom:22px;}
+.tension-frames{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--rim);margin-bottom:26px;}
+@media(max-width:640px){.tension-frames{grid-template-columns:1fr;}}
+.tension-frame{background:var(--void-3);padding:24px 26px;}
+.tension-frame-label{font-family:var(--mono);font-size:10px;letter-spacing:0.16em;text-transform:uppercase;margin-bottom:12px;opacity:0.5;}
+.tension-frame-text{font-family:var(--serif);font-size:19px;font-style:italic;color:var(--ink-55);line-height:1.55;}
+.tension-prompt{padding:24px 26px;border:1px solid var(--rim-2);background:rgba(255,255,255,0.02);}
+.tension-prompt-label{font-family:var(--mono);font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--gold);margin-bottom:14px;opacity:0.6;}
+.tension-prompt-q{font-family:var(--serif);font-size:clamp(20px,2.3vw,27px);font-weight:400;font-style:italic;color:var(--ink);line-height:1.5;}
+.nj-frame{display:none;margin-top:1px;padding:22px 30px;background:var(--nj-dim);border:1px solid rgba(46,184,200,0.2);}
+.nj-frame.vis{display:block;}
+.nj-frame-label{font-family:var(--mono);font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--nj);margin-bottom:12px;opacity:0.8;}
+.nj-frame-q{font-family:var(--serif);font-size:19px;font-style:italic;color:rgba(46,184,200,0.7);line-height:1.55;}
+.constraint-controls{margin-top:22px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding-top:22px;border-top:1px solid var(--rim);}
+.deeper-btn{font-family:var(--mono);font-size:10px;letter-spacing:0.16em;text-transform:uppercase;padding:12px 24px;border:1px solid var(--rim-2);background:transparent;color:var(--ink-35);cursor:pointer;transition:all 0.2s;}
+.deeper-btn:hover:not(:disabled){border-color:var(--gold-rim);color:var(--gold);}
+.deeper-btn:disabled{opacity:0.3;cursor:not-allowed;}
+.generate-prompt-btn{font-family:var(--mono);font-size:10px;letter-spacing:0.16em;text-transform:uppercase;padding:12px 24px;border:1px solid rgba(46,184,200,0.25);background:transparent;color:rgba(46,184,200,0.6);cursor:pointer;transition:all 0.2s;}
+.generate-prompt-btn:hover{border-color:rgba(46,184,200,0.4);color:var(--nj);background:var(--nj-dim);}
+.constraint-hint{font-family:var(--mono);font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-18);}
+
+/* HYPOTHETICAL MATRIX */
+.hyp-section{display:none;margin-top:52px;opacity:0;transform:translateY(18px);transition:opacity 0.55s var(--ease-out),transform 0.55s var(--ease-out);}
+.hyp-section.vis{display:block;}
+.hyp-section.in{opacity:1;transform:translateY(0);}
+.hyp-frame{border:1px solid var(--hyp-rim);background:var(--void-2);padding:36px 32px;position:relative;overflow:hidden;}
+.hyp-frame::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--f-bel),var(--hyp));}
+.hyp-eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--hyp);margin-bottom:10px;}
+.hyp-title{font-family:var(--serif);font-size:clamp(22px,2.8vw,34px);font-weight:600;color:var(--ink);margin-bottom:8px;}
+.hyp-subtitle{font-family:var(--sans);font-size:17px;font-weight:300;color:var(--ink-35);margin-bottom:30px;line-height:1.7;}
+.hyp-matrix{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--rim);margin-bottom:1px;}
+@media(max-width:680px){.hyp-matrix{grid-template-columns:1fr;}}
+.hyp-card{background:var(--void-3);padding:30px 26px;border:2px solid transparent;cursor:pointer;transition:all 0.2s;position:relative;}
+.hyp-card:hover{background:var(--surface);border-color:var(--hyp-rim);}
+.hyp-card.active{background:var(--surface);border-color:var(--hyp-rim);}
+.hyp-card-axis{font-family:var(--mono);font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:rgba(232,164,248,0.45);margin-bottom:14px;}
+.hyp-card-if{font-family:var(--serif);font-size:19px;font-style:italic;color:var(--hyp);line-height:1.45;margin-bottom:12px;}
+.hyp-card-then{font-family:var(--sans);font-size:15px;font-weight:300;color:var(--ink-35);line-height:1.75;max-height:0;overflow:hidden;transition:max-height 0.4s ease;}
+.hyp-card.active .hyp-card-then{max-height:200px;}
+.hyp-card-tag{position:absolute;top:16px;right:18px;font-family:var(--mono);font-size:9px;letter-spacing:0.12em;text-transform:uppercase;padding:4px 10px;border:1px solid var(--hyp-rim);color:var(--hyp);opacity:0.4;}
+.hyp-card:hover .hyp-card-tag,.hyp-card.active .hyp-card-tag{opacity:0.8;}
+
+/* COLLISION LAYER */
+.collision-box{display:none;margin-top:1px;padding:38px 40px;background:rgba(247,176,85,0.04);border:1px solid var(--col-rim);position:relative;}
+.collision-box::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--f-cog),var(--f-sen),var(--f-emo),var(--f-exp),var(--f-bel));}
+.collision-box.vis{display:block;}
+.collision-eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--col);margin-bottom:20px;}
+.collision-frames{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--rim);margin-bottom:26px;}
+@media(max-width:640px){.collision-frames{grid-template-columns:1fr;}}
+.collision-frame{background:var(--void-3);padding:24px 26px;}
+.collision-frame-label{font-family:var(--mono);font-size:10px;letter-spacing:0.16em;text-transform:uppercase;margin-bottom:12px;opacity:0.5;}
+.collision-frame-text{font-family:var(--serif);font-size:19px;font-style:italic;color:var(--ink-55);line-height:1.55;}
+.collision-q{padding:24px 28px;background:rgba(247,176,85,0.035);border:1px solid var(--col-rim);margin-top:1px;}
+.collision-q-label{font-family:var(--mono);font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--col);margin-bottom:14px;opacity:0.6;}
+.collision-q-text{font-family:var(--serif);font-size:clamp(20px,2.3vw,28px);font-weight:400;font-style:italic;color:var(--ink);line-height:1.5;}
+.hyp-controls{margin-top:22px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding-top:22px;border-top:1px solid var(--rim);}
+.hyp-reroll-btn{font-family:var(--mono);font-size:10px;letter-spacing:0.16em;text-transform:uppercase;padding:12px 24px;border:1px solid var(--hyp-rim);background:transparent;color:rgba(232,164,248,0.6);cursor:pointer;transition:all 0.2s;}
+.hyp-reroll-btn:hover{border-color:var(--hyp);color:var(--hyp);background:var(--hyp-dim);}
+.hyp-hint{font-family:var(--mono);font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-18);}
+
+/* TERMINUS */
+.terminus-section{display:none;margin-top:52px;opacity:0;transform:translateY(18px);transition:opacity 0.55s var(--ease-out),transform 0.55s var(--ease-out);}
+.terminus-section.vis{display:block;}
+.terminus-section.in{opacity:1;transform:translateY(0);}
+.terminus-box{padding:54px 48px;border:1px solid var(--rim-2);background:var(--void-3);position:relative;overflow:hidden;}
+.terminus-box::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--f-cog),var(--f-sen),var(--f-emo),var(--f-exp),var(--f-bel));}
+.terminus-eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--gold);margin-bottom:26px;opacity:0.7;}
+.terminus-locks{display:flex;flex-direction:column;gap:1px;margin-bottom:34px;}
+.terminus-lock{padding:22px 26px;background:var(--void-2);border-left:2px solid var(--rim);transition:border-color 0.3s;}
+.terminus-lock:hover{border-left-color:var(--gold-rim);}
+.terminus-lock-num{font-family:var(--mono);font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-18);margin-bottom:10px;}
+.terminus-lock-q{font-family:var(--serif);font-size:clamp(19px,2.1vw,25px);font-style:italic;color:var(--ink-55);line-height:1.55;}
+.terminus-doctrine{padding:22px 26px;border:1px solid var(--rim);background:rgba(201,165,88,0.025);margin-bottom:34px;}
+.terminus-doctrine-text{font-family:var(--mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-18);line-height:2.0;}
+.terminus-doctrine-text em{color:var(--gold);font-style:normal;}
+.terminus-actions{display:flex;gap:10px;flex-wrap:wrap;}
+.terminus-act{font-family:var(--mono);font-size:10px;letter-spacing:0.14em;text-transform:uppercase;padding:12px 24px;border:1px solid var(--rim-2);background:transparent;color:var(--ink-35);cursor:pointer;transition:all 0.2s;}
+.terminus-act:hover{border-color:var(--gold-rim);color:var(--gold);}
+
+/* JSON EXPORT PANEL */
+.json-export-panel{display:none;margin-top:30px;padding:24px 28px;border:1px solid rgba(123,156,247,0.2);background:rgba(123,156,247,0.03);}
+.json-export-panel.vis{display:block;}
+.json-export-label{font-family:var(--mono);font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--f-cog);margin-bottom:12px;}
+.json-export-code{width:100%;min-height:120px;padding:16px 18px;background:var(--void-3);border:1px solid rgba(123,156,247,0.15);font-family:var(--mono);font-size:12px;color:var(--ink-35);resize:vertical;outline:none;line-height:1.7;}
+.json-copy-btn{font-family:var(--mono);font-size:10px;letter-spacing:0.14em;text-transform:uppercase;padding:10px 20px;border:1px solid rgba(123,156,247,0.3);background:transparent;color:var(--f-cog);cursor:pointer;transition:all 0.2s;margin-top:10px;}
+.json-copy-btn:hover{background:rgba(123,156,247,0.06);}
+
+/* SYSTEM REVEAL */
+#sys-reveal{display:none;}
+#sys-reveal.on{display:block;}
+.divider{height:1px;background:var(--rim);margin:0 clamp(28px,6vw,90px);position:relative;z-index:1;}
+.divider-label{font-family:var(--mono);font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--gold);background:var(--void);padding-right:14px;position:absolute;left:0;top:-8px;}
+.section-block{position:relative;z-index:1;padding:clamp(60px,9vw,120px) clamp(28px,6vw,90px);}
+.facets-layout{display:grid;grid-template-columns:1fr 1fr;gap:72px;align-items:start;}
+@media(max-width:820px){.facets-layout{grid-template-columns:1fr;gap:50px;}}
+.facet-list{display:flex;flex-direction:column;gap:1px;}
+.facet-row{display:flex;align-items:stretch;cursor:pointer;border:1px solid var(--rim);background:var(--void-2);overflow:hidden;transition:border-color 0.22s;}
+.facet-row:hover,.facet-row.on{border-color:var(--rim-2);}
+.facet-swatch{width:3px;flex-shrink:0;transition:width 0.22s;}
+.facet-row.on .facet-swatch{width:4px;}
+.facet-inner{padding:20px 22px;flex:1;}
+.facet-num{font-family:var(--mono);font-size:9px;letter-spacing:0.18em;text-transform:uppercase;margin-bottom:4px;opacity:0.5;}
+.facet-name{font-family:var(--serif);font-size:22px;font-weight:600;color:var(--ink);}
+.facet-detail{font-family:var(--sans);font-size:16px;font-weight:300;color:var(--ink-35);line-height:1.85;max-height:0;overflow:hidden;transition:max-height 0.4s ease,margin-top 0.3s;margin-top:0;}
+.facet-row.on .facet-detail{max-height:200px;margin-top:10px;}
+.facet-display{position:sticky;top:40px;}
+.fd-eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:var(--gold);margin-bottom:20px;opacity:0.7;}
+.fd-title{font-family:var(--serif);font-size:72px;font-weight:700;line-height:0.9;margin-bottom:24px;transition:color 0.3s;letter-spacing:-0.02em;}
+.fd-body{font-family:var(--serif);font-size:23px;font-weight:300;font-style:italic;color:var(--ink-55);line-height:1.55;padding-left:22px;border-left:2px solid;transition:border-color 0.3s;margin-bottom:26px;}
+.fd-constraint-label{font-family:var(--mono);font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:var(--gold);margin-bottom:10px;opacity:0.7;}
+.fd-constraint{font-family:var(--serif);font-size:18px;font-style:italic;color:var(--ink-35);line-height:1.75;padding:16px 20px;background:var(--void-3);border:1px solid var(--rim-2);}
+.modes-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--rim);margin-top:52px;}
+@media(max-width:680px){.modes-grid{grid-template-columns:1fr;}}
+.mode-panel{background:var(--void-2);padding:44px 36px;transition:background 0.22s;}
+.mode-panel:hover{background:var(--surface);}
+.mode-glyph{font-family:var(--serif);font-size:96px;font-weight:700;line-height:1;color:var(--rim-3);margin-bottom:18px;letter-spacing:-0.04em;}
+.mode-name{font-family:var(--serif);font-size:28px;font-weight:600;color:var(--ink);margin-bottom:6px;}
+.mode-name em{font-style:italic;font-weight:300;}
+.mode-tagline{font-family:var(--mono);font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--gold);margin-bottom:18px;}
+.mode-body{font-family:var(--sans);font-size:17px;font-weight:300;color:var(--ink-55);line-height:1.75;margin-bottom:22px;}
+.mode-signal{font-family:var(--sans);font-size:15px;font-weight:300;color:var(--ink-35);padding:8px 0;border-bottom:1px solid var(--rim);}
+.key-dist{margin-top:1px;padding:34px 32px;background:var(--void-3);border:1px solid var(--rim);}
+.key-dist p{font-family:var(--sans);font-size:18px;font-weight:300;color:var(--ink-55);line-height:1.75;}
+
+/* NOT SECTION */
+.not-section{position:relative;z-index:1;padding:clamp(60px,9vw,120px) clamp(28px,6vw,90px);background:var(--void-2);}
+.not-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--rim);margin-top:40px;margin-bottom:1px;}
+@media(max-width:760px){.not-grid{grid-template-columns:1fr 1fr;}}
+@media(max-width:480px){.not-grid{grid-template-columns:1fr;}}
+.not-cell{background:var(--void-3);padding:32px 26px;transition:border-color 0.22s;border:1px solid transparent;}
+.not-cell:hover{border-color:var(--rim-2);}
+.not-x{font-family:var(--serif);font-size:38px;color:var(--f-emo);margin-bottom:14px;line-height:1;}
+.not-title{font-family:var(--serif);font-size:22px;font-weight:600;color:var(--ink);margin-bottom:10px;}
+.not-body{font-family:var(--sans);font-size:16px;font-weight:300;color:var(--ink-35);line-height:1.8;}
+.is-instead{margin-top:1px;padding:38px 36px;border:1px solid var(--rim-2);background:rgba(201,165,88,0.03);}
+.is-label{font-family:var(--mono);font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--gold);margin-bottom:16px;}
+.is-text{font-family:var(--serif);font-size:clamp(20px,2.3vw,28px);font-weight:300;font-style:italic;color:var(--ink-55);line-height:1.55;}
+
+/* CLOSING */
+.closing-section{position:relative;z-index:1;padding:clamp(90px,12vw,160px) clamp(28px,6vw,90px);}
+.closing-pre{font-family:var(--mono);font-size:11px;letter-spacing:0.24em;text-transform:uppercase;color:var(--gold);margin-bottom:22px;}
+.closing-hed{font-family:var(--serif);font-size:clamp(38px,6vw,80px);font-weight:700;line-height:1.0;letter-spacing:-0.02em;color:var(--ink);margin-bottom:22px;}
+.closing-sub{font-family:var(--sans);font-size:20px;font-weight:300;color:var(--ink-35);line-height:1.75;max-width:560px;margin-bottom:44px;}
+.closing-actions{display:flex;gap:14px;flex-wrap:wrap;}
+footer{position:relative;z-index:1;padding:26px clamp(28px,6vw,90px);border-top:1px solid var(--rim);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;}
+.footer-mark{font-family:var(--mono);font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-18);}
+.footer-line{font-family:var(--mono);font-size:10px;letter-spacing:0.12em;color:var(--ink-18);text-align:right;line-height:1.8;}
+
+/* SCROLL ANIMATIONS */
+.rev{opacity:0;transform:translateY(24px);transition:opacity 0.7s var(--ease-out),transform 0.7s var(--ease-out);}
+.rev.in{opacity:1;transform:translateY(0);}
+.rd1{transition-delay:0.1s;}
+.rd2{transition-delay:0.2s;}
+.rd3{transition-delay:0.3s;}
+</style>
+</head>
+<body>
+
+<nav id="main-nav">
+  <div class="nav-wordmark"><strong>Perspective Prism</strong> · Constraint Engine</div>
+  <div class="nav-right">
+    <button class="nav-pill" onclick="toggleNJ()" id="nj-toggle">NJ Mode</button>
+    <button class="nav-pill" onclick="toggleSysReveal()">How It Works</button>
+    <button class="nav-pill" onclick="toggleJSONPanel()">Export JSON</button>
+    <div class="nav-status" id="nav-status">Deep Pattern Engine Active</div>
+  </div>
+</nav>
+
+<section class="hero" id="top">
+  <div class="hero-sup">Dimensional Intelligence · v5.1 · Constraint Engine</div>
+  <div class="hero-hed">THE<br>PERSPECTIVE</div>
+  <div class="hero-hed-italic">Prism.</div>
+  <div class="hero-doctrine">
+    <div class="doctrine-tag"><span></span> No Advice</div>
+    <div class="doctrine-tag"><span></span> No Labels</div>
+    <div class="doctrine-tag"><span></span> No Resolution</div>
+    <div class="doctrine-tag"><span></span> Structured Pressure Only</div>
+    <div class="doctrine-tag"><span></span> 10-Library Engine</div>
+    <div class="doctrine-tag"><span></span> Hypothetical Matrix</div>
+  </div>
+  <div class="hero-cta">
+    <a href="#engine" class="btn-prime">Enter the Engine</a>
+    <a href="#" class="btn-ghost" onclick="toggleSysReveal();return false;">The Architecture</a>
+  </div>
+  <div class="hero-scroll">↓ Scroll to run a situation</div>
+  <div class="ticker-wrap">
+    <div class="ticker">
+      <span class="ticker-item">Lens Architecture · Not Raw Generation</span>
+      <span class="ticker-item"><em>·</em></span>
+      <span class="ticker-item">Constraint Sequencing · The Product</span>
+      <span class="ticker-item"><em>·</em></span>
+      <span class="ticker-item">Five Lenses · Five Pressure Types</span>
+      <span class="ticker-item"><em>·</em></span>
+      <span class="ticker-item">Hypothetical Matrix · Conditional Pressure</span>
+      <span class="ticker-item"><em>·</em></span>
+      <span class="ticker-item">No Advice · No Diagnosis · No Collapse</span>
+      <span class="ticker-item"><em>·</em></span>
+      <span class="ticker-item">Ten Pattern Libraries · Situationally Alive</span>
+      <span class="ticker-item"><em>·</em></span>
+      <span class="ticker-item">Lens Architecture · Not Raw Generation</span>
+      <span class="ticker-item"><em>·</em></span>
+      <span class="ticker-item">Constraint Sequencing · The Product</span>
+      <span class="ticker-item"><em>·</em></span>
+      <span class="ticker-item">Five Lenses · Five Pressure Types</span>
+      <span class="ticker-item"><em>·</em></span>
+      <span class="ticker-item">Hypothetical Matrix · Conditional Pressure</span>
+      <span class="ticker-item"><em>·</em></span>
+      <span class="ticker-item">No Advice · No Diagnosis · No Collapse</span>
+      <span class="ticker-item"><em>·</em></span>
+      <span class="ticker-item">Ten Pattern Libraries · Situationally Alive</span>
+      <span class="ticker-item"><em>·</em></span>
+    </div>
+  </div>
+</section>
+
+<section class="engine-shell" id="engine">
+  <div class="section-eyebrow">The Engine</div>
+  <h2 class="section-heading">Five lenses. <em>Zero answers.</em></h2>
+  <p class="section-dek">Describe your situation. The system detects the pattern, applies lens architecture, and generates structured pressure. No resolution. No advice. The meaning is yours.</p>
+
+  <div class="engine-mode-badge">Deep Pattern Engine Active · 10-Library Constraint System · Hypothetical Matrix</div>
+
+  <div class="expand-panel" id="expand-panel">
+    <div class="expand-label">Optional Intelligence Expansion — Run Through Another Mind</div>
+    <div class="expand-description">
+      The Prism generates structured prompts. Take any constraint to <em>ChatGPT, Claude, Gemini</em>, or any external intelligence. Paste the result back. It becomes a new pressure layer — not a resolution.
+    </div>
+    <div class="expand-steps">
+      <div class="expand-step"><span>01 →</span> Generate a situation. Select a lens.</div>
+      <div class="expand-step"><span>02 →</span> Click "Generate External Prompt"</div>
+      <div class="expand-step"><span>03 →</span> Paste into any AI. Paste response back.</div>
+      <div class="expand-step"><span>04 →</span> Returned pressure becomes a new layer.</div>
+    </div>
+    <div class="expand-prompt-area" id="expand-prompt-area">
+      <textarea class="expand-prompt-box" id="expand-prompt-box" readonly></textarea>
+      <button class="expand-copy-btn" id="expand-copy-btn" onclick="copyExpandPrompt()">Copy Prompt</button>
+      <span style="font-family:var(--mono);font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-18);">→ Paste into any AI, then paste result below</span>
+      <div class="expand-return-label">Paste Response Here</div>
+      <textarea class="expand-return-area" id="expand-return-area" placeholder="Paste the AI response here…"></textarea>
+      <button class="expand-inject-btn" onclick="injectExpansion()">Inject as New Pressure Layer →</button>
+    </div>
+  </div>
+
+  <div class="val-panel" id="val-panel">
+    <div class="val-header">
+      <div class="val-label">Visible Adaptation Layer — System Reading Preferences</div>
+      <button class="val-reset" onclick="resetVAL()">Reset</button>
+    </div>
+    <div class="val-toggles" id="val-toggles">
+      <button class="val-toggle" onclick="toggleVAL(this,'direct')">Direct Pressure</button>
+      <button class="val-toggle" onclick="toggleVAL(this,'space')">Space to Think</button>
+      <button class="val-toggle" onclick="toggleVAL(this,'pattern')">Pattern-First</button>
+      <button class="val-toggle" onclick="toggleVAL(this,'somatic')">Somatic Awareness</button>
+      <button class="val-toggle" onclick="toggleVAL(this,'strategic')">Strategic Frame</button>
+    </div>
+    <div class="val-explanation" id="val-explanation">Select reading preferences above. The system adjusts <em>which constraints surface first</em> — not the doctrine.</div>
+  </div>
+
+  <div class="pattern-indicator" id="pattern-indicator">
+    <span class="pattern-indicator-label">Pattern Detected →</span>
+    <span class="pattern-indicator-name" id="pattern-indicator-name">—</span>
+    <span class="pattern-indicator-blend" id="pattern-indicator-blend"></span>
+  </div>
+
+  <div class="situation-block">
+    <div class="chips" id="chips">
+      <button class="chip" onclick="pickChip(this)">I feel stuck but don't know why</button>
+      <button class="chip" onclick="pickChip(this)">I have too many options</button>
+      <button class="chip" onclick="pickChip(this)">I keep starting and stopping</button>
+      <button class="chip" onclick="pickChip(this)">Something feels off but I can't name it</button>
+      <button class="chip" onclick="pickChip(this)">I know what to do but I'm not doing it</button>
+      <button class="chip" onclick="pickChip(this)">I keep second-guessing myself</button>
+      <button class="chip" onclick="pickChip(this)">I don't feel like I'm making progress</button>
+      <button class="chip" onclick="pickChip(this)">I lose momentum halfway through</button>
+    </div>
+    <div class="input-row">
+      <div style="flex:1;">
+        <textarea class="sit-textarea" id="sit-input" placeholder="Describe your situation. Be specific. The system applies structural pressure — not a reading of you." oninput="updateChar()" maxlength="400"></textarea>
+        <div class="char-count" id="char-count">0 / 400</div>
+      </div>
+      <button class="run-btn" id="run-btn" onclick="runEngine()" disabled>
+        <div class="spin"></div>
+        <span class="rbtxt">Refract →</span>
+      </button>
+    </div>
+    <div class="err-bar" id="err-bar"></div>
+    <div class="nj-strip" id="nj-strip">
+      <span class="nj-zone-name" id="nj-zone-name">—</span>
+      <span class="nj-zone-sub" id="nj-zone-sub">NJ Regional Frame Active</span>
+    </div>
+  </div>
+
+  <!-- PERSPECTIVES -->
+  <div class="persp-section" id="persp-section">
+    <div class="persp-meta">
+      <div>
+        <div class="persp-sit-echo" id="persp-sit-echo">Situation: <em id="sit-echo-text">—</em></div>
+        <div class="persp-title">Select a lens. <em>Feel the pressure.</em></div>
+      </div>
+      <div class="persp-instr">Choose one.<br>No lens is more correct.<br>Each reveals differently.</div>
+    </div>
+    <div class="persp-grid" id="persp-grid"></div>
+    <div class="injected-layer" id="injected-layer">
+      <div class="injected-eyebrow">External Intelligence Layer — Injected Pressure</div>
+      <div class="injected-text" id="injected-text"></div>
+      <button class="injected-close" onclick="closeInjection()">Dismiss Layer</button>
+    </div>
+    <div class="hist-row" id="hist-row">
+      <span class="hist-label">Explored →</span>
+      <div id="hist-tags"></div>
+    </div>
+  </div>
+
+  <!-- CONSTRAINT LAYER -->
+  <div class="constraint-section" id="constraint-section">
+    <div class="constraint-frame">
+      <div class="constraint-dim-label" id="constraint-dim-label">→ Constraint Layer</div>
+      <div class="constraint-grid" id="constraint-grid"></div>
+      <div class="tension-box" id="tension-box">
+        <div class="tension-eyebrow">Two Frames — Hold Both. Do Not Resolve.</div>
+        <div class="tension-frames" id="tension-frames"></div>
+        <div class="tension-prompt" id="tension-prompt">
+          <div class="tension-prompt-label">What Cannot Be Answered Without Resolving</div>
+          <div class="tension-prompt-q" id="tension-prompt-q"></div>
+        </div>
+      </div>
+      <div class="nj-frame" id="nj-frame">
+        <div class="nj-frame-label" id="nj-frame-label">Garden State Grid · Regional Frame</div>
+        <div class="nj-frame-q" id="nj-frame-q"></div>
+      </div>
+    </div>
+    <div class="constraint-controls">
+      <button class="deeper-btn" id="deeper-btn" onclick="goDeeper()">Increase Pressure →</button>
+      <button class="generate-prompt-btn" id="gen-prompt-btn" onclick="generateExternalPrompt()">Generate External Prompt</button>
+      <span class="constraint-hint">Or select another lens to create a second frame</span>
+    </div>
+  </div>
+
+  <!-- HYPOTHETICAL MATRIX -->
+  <div class="hyp-section" id="hyp-section">
+    <div class="hyp-frame">
+      <div class="hyp-eyebrow">Hypothetical Matrix — Conditional Pressure Engine</div>
+      <div class="hyp-title">What if the assumption shifts?</div>
+      <div class="hyp-subtitle">Four conditional frames. Select any to expand the pressure. None resolve. All force thinking.</div>
+      <div class="hyp-matrix" id="hyp-matrix"></div>
+      <div class="collision-box" id="collision-box">
+        <div class="collision-eyebrow">Collision Point — Two Hypotheticals in Tension</div>
+        <div class="collision-frames" id="collision-frames"></div>
+        <div class="collision-q">
+          <div class="collision-q-label">The Irresolvable Question</div>
+          <div class="collision-q-text" id="collision-q-text"></div>
+        </div>
+      </div>
+    </div>
+    <div class="hyp-controls">
+      <button class="hyp-reroll-btn" onclick="rerollHypotheticals()">Reroll Matrix →</button>
+      <span class="hyp-hint">Select two hypotheticals to generate a collision</span>
+    </div>
+  </div>
+
+  <!-- TERMINUS -->
+  <div class="terminus-section" id="terminus-section">
+    <div class="terminus-box">
+      <div class="terminus-eyebrow">Open Terminus — Three Residual Tensions</div>
+      <div class="terminus-locks" id="terminus-locks"></div>
+      <div class="terminus-doctrine">
+        <div class="terminus-doctrine-text">
+          The system applies <em>structural lenses</em> to your situation. It does not determine which are true.<br>
+          These tensions remain open. What you do with them is <em>yours</em>.
+        </div>
+      </div>
+      <div class="terminus-actions">
+        <button class="terminus-act" onclick="resetEngine()">New Situation →</button>
+        <button class="terminus-act" onclick="rerouteAngles()">Different Angles →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JSON EXPORT PANEL -->
+  <div class="json-export-panel" id="json-export-panel">
+    <div class="json-export-label">Session Export — Structured JSON Output</div>
+    <textarea class="json-export-code" id="json-export-code" readonly></textarea>
+    <button class="json-copy-btn" onclick="copyJSON()">Copy JSON →</button>
+  </div>
+
+</section>
+
+<div id="sys-reveal">
+  <div class="divider"><span class="divider-label">The Five Lenses</span></div>
+  <section class="section-block">
+    <div class="facets-layout">
+      <div>
+        <div class="section-eyebrow rev">The Prism's Architecture</div>
+        <h2 class="section-heading rev rd1">Five lenses.<br><em>Five pressure types.</em></h2>
+        <p class="section-dek rev rd2" style="margin-bottom:34px;">Each lens generates a different kind of structural pressure. Not explanations. Not labels. Angles that force thinking. None of these determine what is true about you.</p>
+        <div class="facet-list">
+          <div class="facet-row on" data-fk="cog" onclick="pickFacet(this,'cog')">
+            <div class="facet-swatch" style="background:var(--f-cog);"></div>
+            <div class="facet-inner">
+              <div class="facet-num" style="color:var(--f-cog);">Lens 01</div>
+              <div class="facet-name">Cognitive Architecture</div>
+              <div class="facet-detail">How you structure and organize thought. Sequences, systems, patterns — your processing signature determines what generates clarity and what generates noise.</div>
+            </div>
+          </div>
+          <div class="facet-row" data-fk="sen" onclick="pickFacet(this,'sen')">
+            <div class="facet-swatch" style="background:var(--f-sen);"></div>
+            <div class="facet-inner">
+              <div class="facet-num" style="color:var(--f-sen);">Lens 02</div>
+              <div class="facet-name">Sensory Integration</div>
+              <div class="facet-detail">How you translate reality into usable input. Your synesthetic signature shapes everything you perceive and process before analysis begins.</div>
+            </div>
+          </div>
+          <div class="facet-row" data-fk="emo" onclick="pickFacet(this,'emo')">
+            <div class="facet-swatch" style="background:var(--f-emo);"></div>
+            <div class="facet-inner">
+              <div class="facet-num" style="color:var(--f-emo);">Lens 03</div>
+              <div class="facet-name">Emotional Climate</div>
+              <div class="facet-detail">Your internal weather system. Not an interruption to intelligence — it IS intelligence. The system generates pressure here, not comfort.</div>
+            </div>
+          </div>
+          <div class="facet-row" data-fk="exp" onclick="pickFacet(this,'exp')">
+            <div class="facet-swatch" style="background:var(--f-exp);"></div>
+            <div class="facet-inner">
+              <div class="facet-num" style="color:var(--f-exp);">Lens 04</div>
+              <div class="facet-name">Experiential Heuristics</div>
+              <div class="facet-detail">Compressed lived intelligence. Every success and failure encoded as a rule your system runs faster than conscious thought — sometimes against your current terrain.</div>
+            </div>
+          </div>
+          <div class="facet-row" data-fk="bel" onclick="pickFacet(this,'bel')">
+            <div class="facet-swatch" style="background:var(--f-bel);"></div>
+            <div class="facet-inner">
+              <div class="facet-num" style="color:var(--f-bel);">Lens 05</div>
+              <div class="facet-name">Belief Infrastructure</div>
+              <div class="facet-detail">The load-bearing walls. Everything else is built on top of them. The hardest pressure to generate — and the most important to hold without collapsing.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="facet-display rev rd2">
+        <div class="fd-eyebrow">Currently Refracting</div>
+        <div class="fd-title" id="fd-title" style="color:var(--f-cog);">COGNITIVE</div>
+        <div class="fd-body" id="fd-body" style="border-color:#7b9cf7;">How you structure and sequence thought — before you're aware you're doing it.</div>
+        <div class="fd-constraint-label">Structural pressure this lens generates</div>
+        <div class="fd-constraint" id="fd-constraint">"What structure are you using to make this decision? What breaks if that structure is wrong? What are you optimizing for without saying it?"</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"><span class="divider-label">The Hypothetical Matrix</span></div>
+  <section class="section-block">
+    <div class="section-eyebrow rev">New in v5</div>
+    <h2 class="section-heading rev rd1">Conditional frames.<br><em>Forced thinking.</em></h2>
+    <p class="section-dek rev rd2">The Hypothetical Matrix generates four conditional pressure frames from your situation and chosen lens. Select two. They collide. An irresolvable question surfaces. The system never tells you what the answer is.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--rim);margin-top:40px;" class="rev rd2">
+      <div style="background:var(--void-2);padding:32px 28px;">
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--hyp);margin-bottom:12px;">Assumption Frame</div>
+        <div style="font-family:var(--serif);font-size:20px;font-style:italic;color:var(--ink-55);line-height:1.55;">What if the core assumption holding this together is false?</div>
+      </div>
+      <div style="background:var(--void-2);padding:32px 28px;">
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--hyp);margin-bottom:12px;">Inversion Frame</div>
+        <div style="font-family:var(--serif);font-size:20px;font-style:italic;color:var(--ink-55);line-height:1.55;">What if the obstacle is the path?</div>
+      </div>
+      <div style="background:var(--void-2);padding:32px 28px;">
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--hyp);margin-bottom:12px;">Stillness Frame</div>
+        <div style="font-family:var(--serif);font-size:20px;font-style:italic;color:var(--ink-55);line-height:1.55;">What if no movement is the correct response?</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"><span class="divider-label">The Architecture</span></div>
+  <section class="section-block">
+    <div class="section-eyebrow rev">Processing Architecture</div>
+    <h2 class="section-heading rev rd1">Two architectures.<br><em>Both are you.</em></h2>
+    <p class="section-dek rev rd2">The engine doesn't announce which mode a constraint is written from. You feel it in the texture — one arrives whole, the other builds through traceable steps.</p>
+    <div class="modes-grid">
+      <div class="mode-panel rev">
+        <div class="mode-glyph">O</div>
+        <div class="mode-name">The <em>Orchestra</em></div>
+        <div class="mode-tagline">Harmonic · Synthesizing · Felt</div>
+        <div class="mode-body">All five lenses generate pressure simultaneously. The constraint arrives as a whole before it can be reasoned about.</div>
+        <div class="mode-signal">You're in flow — time disappears</div>
+        <div class="mode-signal">Something feels wrong before you can say why</div>
+        <div class="mode-signal">The constraint hits immediately or not at all</div>
+      </div>
+      <div class="mode-panel rev rd2">
+        <div class="mode-glyph">C</div>
+        <div class="mode-name">The <em>Council</em></div>
+        <div class="mode-tagline">Deliberate · Analytical · Traceable</div>
+        <div class="mode-body">The five lenses generate pressure sequentially. Each constraint adds to the previous. The force builds through stages.</div>
+        <div class="mode-signal">You're making a high-stakes decision</div>
+        <div class="mode-signal">You need to trace your reasoning</div>
+        <div class="mode-signal">The constraint builds across multiple rounds</div>
+      </div>
+    </div>
+    <div class="key-dist rev">
+      <div class="section-eyebrow" style="margin-bottom:12px;">The Key Distinction</div>
+      <p>Orchestra and Council aren't toggles you select. They're architectures you're already running. The lenses surface which one is active — by which question forces something open.</p>
+    </div>
+  </section>
+
+  <div class="not-section">
+    <div class="section-eyebrow rev">The Doctrine</div>
+    <h2 class="section-heading rev rd1">What this system<br><em>refuses to do.</em></h2>
+    <div class="not-grid">
+      <div class="not-cell rev"><div class="not-x">✗</div><div class="not-title">Interpret you</div><div class="not-body">The system applies lenses. It does not assign meaning to what surfaces.</div></div>
+      <div class="not-cell rev rd1"><div class="not-x">✗</div><div class="not-title">Resolve tension</div><div class="not-body">Any output that collapses ambiguity is a violation. The system may clarify tension. It may not reduce it.</div></div>
+      <div class="not-cell rev rd2"><div class="not-x">✗</div><div class="not-title">Diagnose you</div><div class="not-body">No labels are assigned, announced, or stored. The system observes nothing it declares.</div></div>
+      <div class="not-cell rev rd1"><div class="not-x">✗</div><div class="not-title">Generate insight</div><div class="not-body">Insight is yours. The system generates conditions for it. The lenses are non-binding.</div></div>
+      <div class="not-cell rev rd2"><div class="not-x">✗</div><div class="not-title">Complete the arc</div><div class="not-body">There is no conclusion. The Open Terminus surfaces residual tensions — not answers.</div></div>
+      <div class="not-cell rev rd3"><div class="not-x">✗</div><div class="not-title">Replace you</div><div class="not-body">The human is the terminal act. The system applies structural pressure. Meaning-making belongs entirely to the person holding the prism.</div></div>
+    </div>
+    <div class="is-instead rev">
+      <div class="is-label">What It Is Instead</div>
+      <div class="is-text">A lens system that refuses to collapse into a single view. Five angles of structural pressure. None of them determine what is true. The meaning is made by the person holding the prism.</div>
+    </div>
+  </div>
+
+  <section class="closing-section">
+    <div class="closing-pre rev">The Manual You Were Never Given</div>
+    <h2 class="closing-hed rev rd1">The system applies lenses.<br><strong>You decide what they mean.</strong></h2>
+    <p class="closing-sub rev rd2">Five lenses. Constraint pressure. Hypothetical matrix. No labels. No resolution. The intelligence lives in the gap — and the gap is yours.</p>
+    <div class="closing-actions rev rd3">
+      <a href="#engine" class="btn-prime">Back to the Engine</a>
+    </div>
+  </section>
+</div>
+
+<footer>
+  <div class="footer-mark">The Perspective Prism · Dimensional Intelligence v5.1</div>
+  <div class="footer-line">Structural lenses only. The meaning is yours.<br>The system applies pressure. You synthesize.</div>
+</footer>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// PATTERN LIBRARY — 10-Pattern Deep Library Engine
+// ═══════════════════════════════════════════════════════════════
+const PATTERN_LIBRARY = {
+  patterns: [
+    {
+      id: "stuck",
+      label: "Stuck / Blocked",
+      keywords: ["stuck","blocked","can't move","paralyzed","stalled","frozen","going nowhere","standstill","not moving","don't know why"],
+      lenses: {
+        cognitive: [
+          { q:"What structure are you using to evaluate your options — and what does that structure exclude by design?", ctx:"Structural exclusion pressure — the architecture of your thinking may be generating the stuck state." },
+          { q:"What sequence have you locked in that has no valid next step?", ctx:"Sequence lock pressure — the order you've imposed may be the constraint, not the content." },
+          { q:"What decision are you treating as permanent that could be made reversibly?", ctx:"Reversibility pressure — permanence framing compresses the option space." }
+        ],
+        sensory: [
+          { q:"What signal are you receiving that you're classifying as noise?", ctx:"Signal-noise misclassification pressure — something you're dismissing may be load-bearing." },
+          { q:"What input channel have you stopped consulting — and when did you stop?", ctx:"Attention collapse pressure — the channel you've closed may hold the relevant signal." },
+          { q:"What does this feel like in your body right now — and what has that texture told you before?", ctx:"Somatic signal pressure — the physical texture of stuck has a history worth reading." }
+        ],
+        emotional: [
+          { q:"What emotion is being protected by not moving?", ctx:"Protection pressure — the stuck state may be preserving something that movement would expose." },
+          { q:"What would you feel in the first hour after moving — and is that feeling being avoided?", ctx:"Post-movement affect pressure — the feeling after movement, not before, may be the actual obstacle." },
+          { q:"What emotion would surface if you accepted that you might not move today?", ctx:"Acceptance pressure — the resistance to accepting non-movement may be generating more friction than the original block." }
+        ],
+        experiential: [
+          { q:"Where have you been stuck before — and what finally shifted?", ctx:"Pattern track record pressure — the last time this happened has data worth reading." },
+          { q:"What past experience taught you that being stuck is dangerous?", ctx:"Danger encoding pressure — the urgency around being stuck may be an encoded response to a prior situation." },
+          { q:"What does 'moving forward' look like in a situation like this — based on what you've actually done, not what you tell yourself you should do?", ctx:"Behavioral gap pressure — the gap between actual movement behavior and stated movement intention is informative." }
+        ],
+        belief: [
+          { q:"What do you believe will happen if you stay stuck longer than is acceptable?", ctx:"Consequence belief pressure — the imagined cost of sustained stuck may be more controlling than the actual cost." },
+          { q:"What belief says that stuck is a problem that must be solved — rather than a state that has information?", ctx:"Problem-framing belief pressure — treating stuck as a problem to solve may be the primary obstacle." },
+          { q:"What would you have to believe about yourself for this stuck state to be acceptable right now?", ctx:"Self-belief pressure — the unacceptability of stuck may be identity-driven rather than situationally accurate." }
+        ]
+      }
+    },
+    {
+      id: "overwhelm",
+      label: "Overwhelm",
+      keywords: ["overwhelmed","too much","can't handle","drowning","swamped","overloaded","too many","flooded","everything at once","can't cope"],
+      lenses: {
+        cognitive: [
+          { q:"What are you trying to hold in working memory simultaneously that could be externalized?", ctx:"Cognitive load pressure — the processing demand may exceed the architecture's actual capacity." },
+          { q:"Which of the things that feel urgent would still feel urgent if you removed the deadline?", ctx:"Urgency audit pressure — manufactured urgency and actual urgency produce identical felt states." },
+          { q:"What organizing principle are you using to sequence this — and what does it systematically move to the bottom?", ctx:"Sequencing bias pressure — every prioritization framework has a systematic blind spot." }
+        ],
+        sensory: [
+          { q:"What sensory input are you trying to process right now that could be reduced without consequence?", ctx:"Input reduction pressure — overwhelm often includes environmental amplification beyond what the task requires." },
+          { q:"What does this feel like physically — and what is that sensation asking for?", ctx:"Somatic request pressure — the body's overwhelm signal often names a specific need." },
+          { q:"What single input, if removed, would drop the felt load most significantly?", ctx:"Load reduction pressure — overwhelm is not uniformly distributed; the dominant contributor is identifiable." }
+        ],
+        emotional: [
+          { q:"What emotion underneath the overwhelm would surface if the volume dropped?", ctx:"Layer pressure — overwhelm is often a secondary state covering something more specific." },
+          { q:"What are you afraid would be revealed about you if you failed to manage this volume?", ctx:"Exposure fear pressure — the stakes of overwhelm may include identity threat beyond task failure." },
+          { q:"What would you feel if you simply declared this unmanageable and stopped?", ctx:"Permission pressure — the resistance to declaring incompletion may be generating more load than the tasks themselves." }
+        ],
+        experiential: [
+          { q:"What have you done in past overwhelm states that reduced the load — even temporarily?", ctx:"Behavioral track record pressure — you have actual data on what shifts this state." },
+          { q:"When has overwhelm led to something useful — and what was the pattern?", ctx:"Productive overwhelm pressure — there may be a subset of overwhelm states that generate useful outputs." },
+          { q:"What is this situation most similar to from your history — and what did you do then that you're not doing now?", ctx:"Behavioral gap pressure — the gap between past effective response and current response is informative." }
+        ],
+        belief: [
+          { q:"What do you believe about your responsibility for managing this volume — and who established that belief?", ctx:"Responsibility belief pressure — the obligation to manage everything may be a rule you inherited rather than chose." },
+          { q:"What would you have to believe about yourself to ask for help right now?", ctx:"Help-seeking belief pressure — the beliefs blocking help-seeking under overwhelm are worth naming." },
+          { q:"What belief says this volume is a test you must pass alone?", ctx:"Self-sufficiency belief pressure — the frame of overwhelm as a test may be the primary source of load." }
+        ]
+      }
+    },
+    {
+      id: "inconsistency",
+      label: "Inconsistency / Starting and Stopping",
+      keywords: ["inconsistent","keep starting","stopping","can't maintain","lose momentum","giving up","half finished","never complete","start over","restart","inconsistency"],
+      lenses: {
+        cognitive: [
+          { q:"What decision are you re-making at each restart that could be made once?", ctx:"Re-decision pressure — repeated stopping and starting may be caused by an unresolved foundational decision that re-surfaces each cycle." },
+          { q:"What is the cognitive cost of each restart — and what does paying that cost repeatedly tell you?", ctx:"Restart cost pressure — the pattern of repeated starting may be generating more friction than the original task." },
+          { q:"What structure would make stopping less costly than continuing?", ctx:"Exit architecture pressure — the system you've built may have better exit conditions than continuation conditions." }
+        ],
+        sensory: [
+          { q:"What does momentum feel like in your body — and what does its absence feel like?", ctx:"Momentum signal pressure — you may have a reliable somatic indicator of when momentum is actually present versus when it's anticipated." },
+          { q:"What environmental condition correlates with your longest runs of consistency?", ctx:"Environmental correlation pressure — the physical context of your most consistent periods has information." },
+          { q:"What sensory signal appears just before you stop — and what does it name?", ctx:"Stop-signal pressure — the signal preceding stopping is specific and identifiable." }
+        ],
+        emotional: [
+          { q:"What emotion appears when you're about to stop — and what does it say?", ctx:"Pre-stop affect pressure — the emotional state immediately preceding stopping is the most informative data point in the pattern." },
+          { q:"What are you protecting by stopping — and from what?", ctx:"Protection pressure — stopping is not only avoidance; it is often active preservation of something important." },
+          { q:"What would you feel if you accepted that this pattern might be permanent?", ctx:"Permanence pressure — the resistance to accepting the pattern as potentially permanent may itself be part of the cycle." }
+        ],
+        experiential: [
+          { q:"What is the longest consecutive run you've had in a comparable situation — and what enabled it?", ctx:"Peak performance pressure — your actual consistency record in similar contexts has structural information." },
+          { q:"What pattern does this inconsistency most resemble from your history?", ctx:"Pattern recognition pressure — this particular rhythm of starting and stopping may have a documented signature in your experience." },
+          { q:"When has inconsistency actually served you — and what was that about?", ctx:"Adaptive inconsistency pressure — some inconsistency patterns are load-balancing mechanisms, not failures." }
+        ],
+        belief: [
+          { q:"What belief says consistency is the indicator of seriousness about this — and where did that belief originate?", ctx:"Consistency-as-seriousness belief pressure — the equation of consistency with commitment may be an inherited standard." },
+          { q:"What would you have to believe about this work for stopping to be acceptable rather than a failure?", ctx:"Stop-acceptability belief pressure — the framing of stopping as failure may be the primary driver of the restart cycle." },
+          { q:"What do you believe would happen if you officially gave yourself permission to be inconsistent here?", ctx:"Permission belief pressure — the consequences imagined from granting inconsistency permission may not be accurate." }
+        ]
+      }
+    },
+    {
+      id: "unclear_tension",
+      label: "Unclear Tension",
+      keywords: ["something feels off","can't name it","unclear","vague feeling","something wrong","don't know what","can't identify","something's not right","off but","unclear what"],
+      lenses: {
+        cognitive: [
+          { q:"What are you trying to name — and what's the closest word you've found so far?", ctx:"Naming proximity pressure — the approximate name may contain the actual signal." },
+          { q:"What would you stop doing if the tension resolved — and what does that tell you about what the tension is protecting?", ctx:"Resolution behavior pressure — the behavioral consequences of resolution often identify the source." },
+          { q:"What is unclear in the foreground — and what are you not looking at behind it?", ctx:"Attention geometry pressure — unclear foreground states often have a more specific background source." }
+        ],
+        sensory: [
+          { q:"Where in your body does this feeling live — and what is its texture?", ctx:"Somatic location pressure — the physical location and quality of 'off' is more specific than the cognitive description." },
+          { q:"What changed recently that your body registered before your mind named?", ctx:"Somatic precedence pressure — the body often processes environmental change before conscious awareness catches up." },
+          { q:"What input are you receiving that you're treating as irrelevant?", ctx:"Relevance misclassification pressure — the off feeling may have a specific signal source you've decided not to consult." }
+        ],
+        emotional: [
+          { q:"If this feeling were an emotion with a name, what would be closest?", ctx:"Approximate emotion pressure — the closest-named emotion contains information even if imprecise." },
+          { q:"What would this feeling be pointing toward if it were accurate?", ctx:"Signal trust pressure — treating the off feeling as informative rather than noise changes what you can extract from it." },
+          { q:"What are you most afraid this feeling is about?", ctx:"Fear-of-content pressure — the most feared interpretation often contains the most relevant signal." }
+        ],
+        experiential: [
+          { q:"When have you had this specific texture of 'off' before — and what was it about?", ctx:"Texture recognition pressure — the specific quality of this unclear tension may have a documented history." },
+          { q:"What did you do the last time you had this feeling — and what happened?", ctx:"Response track record pressure — your past handling of this texture has outcomes worth examining." },
+          { q:"What does this remind you of — even if the connection seems distant?", ctx:"Loose association pressure — the first connection your mind makes may be more accurate than a reasoned comparison." }
+        ],
+        belief: [
+          { q:"What do you believe about the validity of feelings you can't explain?", ctx:"Unexplained signal belief pressure — the belief about the value of inarticulate signals shapes whether you consult them." },
+          { q:"What would you have to believe for this unclear feeling to be worth acting on?", ctx:"Action-enabling belief pressure — the threshold for acting on unclear signals is belief-mediated." },
+          { q:"What belief says you should be able to name what's wrong before you can respond to it?", ctx:"Naming-prerequisite belief pressure — the requirement to name before responding may be the primary delay mechanism." }
+        ]
+      }
+    },
+    {
+      id: "knowing_not_doing",
+      label: "Knowing / Not Doing",
+      keywords: ["know what to do","not doing it","should do","procrastinating","understand but","know I need","clear but not","obvious but","can't make myself"],
+      lenses: {
+        cognitive: [
+          { q:"What do you actually know — and what are you calling knowledge that might be more accurately called intention?", ctx:"Knowledge-intention gap pressure — the gap between knowing and doing often lives in this misclassification." },
+          { q:"What step would you take if the outcome of taking it were guaranteed?", ctx:"Outcome certainty pressure — the resistance to action often lives in outcome uncertainty, not task complexity." },
+          { q:"What decision inside the action have you not yet made — that makes the first step actually unclear?", ctx:"Embedded decision pressure — 'I know what to do' often contains an unresolved sub-decision that prevents movement." }
+        ],
+        sensory: [
+          { q:"What does not doing it feel like right now — and what does it feel like after not doing it?", ctx:"Temporal affect contrast pressure — the feeling during and after avoidance are different data points." },
+          { q:"What physical sensation appears when you think about beginning?", ctx:"Initiation sensation pressure — the body's response to imagined initiation often names the specific obstacle." },
+          { q:"What environmental condition would make beginning easier — and why is that condition absent?", ctx:"Environmental gap pressure — the conditions for action may be partially or fully within your control." }
+        ],
+        emotional: [
+          { q:"What emotion is avoidance preserving right now?", ctx:"Preservation pressure — avoidance is active maintenance of a current emotional state. Name what would change." },
+          { q:"What would you feel in the hour after completing it?", ctx:"Post-completion pressure — the feeling after completion may be very different from the feeling imagined before." },
+          { q:"What are you afraid you'll discover about yourself or the work if you begin?", ctx:"Discovery fear pressure — some avoidance protects against a specific feared revelation." }
+        ],
+        experiential: [
+          { q:"What have you done before in situations where you knew but weren't doing — what finally shifted?", ctx:"Shift mechanism pressure — your actual history of moving from knowing to doing has structural information." },
+          { q:"When has this specific pattern of knowing-not-doing appeared before — and how long did it last?", ctx:"Duration pressure — the typical length of this pattern in your history is informative for how to respond." },
+          { q:"What did you tell yourself would be different this time — and is it?", ctx:"Prediction accuracy pressure — the predictions made about this cycle's resolvability have a track record." }
+        ],
+        belief: [
+          { q:"What do you believe will happen once you start — that you're not ready for?", ctx:"Initiation consequence belief pressure — the imagined consequences of beginning may be running as a deterrent." },
+          { q:"What belief about readiness is keeping you in preparation rather than execution?", ctx:"Readiness belief pressure — the threshold for 'ready' may be movable or imagined." },
+          { q:"What would you have to believe about yourself to start before you feel ready?", ctx:"Self-enabling belief pressure — identify the belief that would permit imperfect initiation." }
+        ]
+      }
+    },
+    {
+      id: "second_guessing",
+      label: "Second-Guessing",
+      keywords: ["second guess","doubt","not sure","reconsidering","keep changing","unsure","questioning","doubt myself","can't decide","reverse","flip-flop","uncertain"],
+      lenses: {
+        cognitive: [
+          { q:"What criteria are you using to evaluate this decision — and how would you know if those criteria were wrong?", ctx:"Criteria audit pressure — the evaluation framework may be the source of the uncertainty, not the decision itself." },
+          { q:"What information do you believe you're missing — and would having it actually change your decision?", ctx:"Information gap pressure — the belief that more information would resolve uncertainty may not be accurate." },
+          { q:"What have you already decided that you're pretending is still open?", ctx:"False-open pressure — some decisions that feel uncertain have already been made at a level below conscious review." }
+        ],
+        sensory: [
+          { q:"What does your body say when you hold the original decision — and when you hold the revised one?", ctx:"Somatic comparison pressure — the physical response to each option may be more differentiated than the cognitive response." },
+          { q:"What signal do you trust least right now — and why?", ctx:"Signal trust audit pressure — which of your information channels has lost credibility, and what does that tell you?" },
+          { q:"What input are you over-consulting because you don't trust what you already have?", ctx:"Over-consultation pressure — repeated consultation without resolution often signals that the answer is already present." }
+        ],
+        emotional: [
+          { q:"What emotion is driving the re-examination — and is it new information or a recurring state?", ctx:"Emotion source pressure — second-guessing driven by anxiety has different implications than second-guessing driven by new relevant feeling." },
+          { q:"What are you afraid the original decision says about you?", ctx:"Identity implication pressure — some second-guessing is about the decision's meaning for self-concept rather than the decision's quality." },
+          { q:"What would you feel if you stopped reconsidering — if the decision were simply final?", ctx:"Finality affect pressure — the emotional response to imagined finality often names what the second-guessing is protecting." }
+        ],
+        experiential: [
+          { q:"When has sustained second-guessing led to a better outcome — and when has it simply delayed the original decision?", ctx:"Second-guessing track record pressure — your history with this pattern has outcome data." },
+          { q:"What does this uncertainty feel like — and when have you had this exact quality of uncertainty before?", ctx:"Uncertainty texture pressure — the specific quality of this doubt may have a documented history in your experience." },
+          { q:"What decision did you make that you later wished you'd second-guessed — and is this situation like that one?", ctx:"Regret comparison pressure — the situations worth second-guessing may have a specific pattern worth identifying." }
+        ],
+        belief: [
+          { q:"What do you believe about the cost of making the wrong decision here — and how accurate is that belief?", ctx:"Cost belief pressure — the imagined cost of error may be driving more uncertainty than the actual decision stakes warrant." },
+          { q:"What belief says that sustained reconsideration is a form of responsibility?", ctx:"Reconsideration-as-responsibility belief pressure — the equation of second-guessing with due diligence may be worth examining." },
+          { q:"What would you have to believe about yourself to trust the original decision?", ctx:"Self-trust belief pressure — identify what belief would permit the decision to be settled." }
+        ]
+      }
+    },
+    {
+      id: "no_progress",
+      label: "No Progress",
+      keywords: ["no progress","not moving forward","standing still","not advancing","nothing's changing","same place","not getting anywhere","plateau","flat","stagnant","no results"],
+      lenses: {
+        cognitive: [
+          { q:"What metric are you using to evaluate progress — and did you choose it, or did it arrive from outside?", ctx:"Metric origin pressure — the instrument you're using to measure progress may have been inherited rather than chosen." },
+          { q:"What progress have you made that your current frame classifies as not-progress?", ctx:"Reclassification pressure — the measurement frame may be excluding actual movement." },
+          { q:"If progress were non-linear and non-visible for this period, what would that look like from the inside?", ctx:"Progress texture pressure — some forms of meaningful progress are architecturally invisible until they surface." }
+        ],
+        sensory: [
+          { q:"What does progress feel like when it's happening — and is that sensation present in any form right now?", ctx:"Progress sensation pressure — the felt signal of actual progress may be present but beneath the threshold of recognition." },
+          { q:"What evidence of movement exists that you're not counting?", ctx:"Evidence gap pressure — the field of view for progress assessment may be systematically narrow." },
+          { q:"What input would tell you that progress is happening if you trusted it?", ctx:"Trusted signal pressure — you may have access to progress indicators that your current evaluation framework dismisses." }
+        ],
+        emotional: [
+          { q:"What emotion appears when you think about the gap between where you are and where you expected to be?", ctx:"Gap affect pressure — the emotional response to the progress gap may be about the expectation rather than the actual state." },
+          { q:"What would you feel if you accepted that this pace is the actual pace?", ctx:"Pace acceptance pressure — the resistance to accepting current pace as real often generates more friction than the pace itself." },
+          { q:"What fear is underneath the discomfort of no visible progress?", ctx:"Underlying fear pressure — 'no progress' as a concern usually has a specific feared consequence beneath it." }
+        ],
+        experiential: [
+          { q:"What periods in your history looked like no-progress from the inside but produced significant change?", ctx:"Invisible progress history pressure — your actual track record with periods that felt stagnant has outcome data." },
+          { q:"What did 'progress' feel like in the last period when you were clearly moving forward?", ctx:"Progress signature pressure — your specific felt experience of progress is an identifiable signal." },
+          { q:"What did you expect progress to look like — and when did you form that expectation?", ctx:"Expectation origin pressure — the expectation being violated may be older than the current situation." }
+        ],
+        belief: [
+          { q:"What belief defines what progress should look like in this situation?", ctx:"Progress definition belief pressure — the definition of progress being applied may be producing systematic misreading of actual movement." },
+          { q:"What would you have to believe for 'no visible progress' to be acceptable right now?", ctx:"Acceptability belief pressure — identify the belief that would permit this period to be acceptable without progress signals." },
+          { q:"What do you believe about what the absence of visible progress means about you?", ctx:"Identity implication belief pressure — the self-meaning made from progress absence may be more controlling than the situation." }
+        ]
+      }
+    },
+    {
+      id: "avoidance",
+      label: "Avoidance",
+      keywords: ["avoiding","putting off","don't want to","keep delaying","resistance to","not facing","running from","won't deal with","can't face","dreading"],
+      lenses: {
+        cognitive: [
+          { q:"What do you think will happen if you stop avoiding — and how accurate is that prediction?", ctx:"Consequence prediction pressure — the predicted outcome of engagement may not match the actual outcome." },
+          { q:"What is the cognitive cost of sustained avoidance — and is it less than the cost of engagement?", ctx:"Avoidance cost pressure — avoidance is not free; its ongoing cognitive cost may exceed the cost of what's being avoided." },
+          { q:"What decision inside the avoided thing have you not yet made — that makes engagement actually unclear?", ctx:"Embedded decision pressure — avoidance often protects against an unresolved sub-decision rather than the primary task." }
+        ],
+        sensory: [
+          { q:"What physical sensation appears when you think about engaging with this — and what does it name?", ctx:"Engagement sensation pressure — the body's response to imagined engagement is usually more specific than the cognitive response." },
+          { q:"What does the relief of avoidance feel like — and how long does it last?", ctx:"Avoidance relief duration pressure — the temporal structure of avoidance relief is informative about its function." },
+          { q:"What would change in your body in the first five minutes of engaging?", ctx:"Engagement onset pressure — the somatic shift at the beginning of engagement often contradicts the avoidance prediction." }
+        ],
+        emotional: [
+          { q:"What emotion is avoidance protecting right now?", ctx:"Protection pressure — every avoidance behavior is protecting an emotional state. Name the state being preserved." },
+          { q:"What would you feel in the hour after engaging — and is that different from what you feel anticipating it?", ctx:"Anticipation gap pressure — the gap between anticipated and actual post-engagement emotion is usually informative." },
+          { q:"What does the thing being avoided represent — beyond its literal content?", ctx:"Symbolic content pressure — the avoided thing often carries meaning beyond its actual stakes." }
+        ],
+        experiential: [
+          { q:"What happened the last time you stopped avoiding something comparable?", ctx:"Engagement track record pressure — your actual history of ending avoidance cycles has outcome data." },
+          { q:"What is the longest you've sustained avoidance of something this significant — and what eventually broke it?", ctx:"Duration pressure — the typical break mechanism for your avoidance patterns has a structure." },
+          { q:"What has avoidance actually cost you in comparable situations?", ctx:"Actual cost pressure — the real cost of past avoidance may be different from the imagined cost of current engagement." }
+        ],
+        belief: [
+          { q:"What do you believe will be different later — that isn't different about you, but about the thing being avoided?", ctx:"Later-is-different belief pressure — the belief that later will be easier may not be examining what would actually need to change." },
+          { q:"What belief says that avoidance is the intelligent response to this situation?", ctx:"Avoidance-as-intelligence belief pressure — the framing of avoidance as protective or wise may be worth examining." },
+          { q:"What would you have to believe about yourself to engage with this right now?", ctx:"Self-enabling belief pressure — identify the belief that would permit engagement without the expected cost." }
+        ]
+      }
+    },
+    {
+      id: "perfectionism",
+      label: "Perfectionism",
+      keywords: ["not ready","not good enough","needs to be perfect","can't release","keep working","polishing","not done","never done","always more","standards","high standards","perfectionist"],
+      lenses: {
+        cognitive: [
+          { q:"What would 'done' look like — and who defined that standard?", ctx:"Done-standard pressure — the definition of completion may have been inherited or constructed from an external reference point." },
+          { q:"What are you still changing that no one else would notice or weight?", ctx:"Marginal improvement pressure — the modifications being made beyond a certain threshold may have no external signal value." },
+          { q:"What decision have you not made that is keeping iteration open?", ctx:"Closure-preventing decision pressure — there's usually one unresolved choice that prevents completion." }
+        ],
+        sensory: [
+          { q:"What does 'done' feel like — and have you felt it before in comparable work?", ctx:"Done sensation pressure — you have a somatic signature for completion; whether it's present now is informative." },
+          { q:"What does continuing to work on this feel like — productive, compulsive, or something else?", ctx:"Work texture pressure — the felt quality of continued work after a certain point often signals its actual function." },
+          { q:"What would change physically if you released this in its current state?", ctx:"Release sensation pressure — the imagined physical response to release often names what completion would expose." }
+        ],
+        emotional: [
+          { q:"What emotion would be exposed by releasing this now?", ctx:"Exposure pressure — releasing unfinished work often exposes an emotion that completion defers." },
+          { q:"What are you afraid people will think about you based on this work's imperfections?", ctx:"Evaluation fear pressure — the imagined response to imperfect release may be significantly more severe than the actual response." },
+          { q:"What would you feel toward yourself in the week after releasing this?", ctx:"Post-release self-evaluation pressure — the imagined self-judgment following release is often the primary driver." }
+        ],
+        experiential: [
+          { q:"What have you released imperfectly that turned out fine?", ctx:"Counter-evidence pressure — your history of successful imperfect releases is systematically underweighted." },
+          { q:"What is the actual reception history for work you released before you felt ready?", ctx:"Reception accuracy pressure — your predictions about how imperfect releases are received have a track record worth examining." },
+          { q:"What has continued working on something cost you — in opportunity or in other work?", ctx:"Opportunity cost pressure — the cost of continued iteration includes what isn't being done while this is being polished." }
+        ],
+        belief: [
+          { q:"What belief says it must be complete before it's valid?", ctx:"Validity belief pressure — the equation of completeness with validity may be generating an impossible threshold." },
+          { q:"What are you assuming about how imperfect output will be received — and by whom?", ctx:"Reception belief pressure — the assumed response to imperfection may be significantly more severe than the actual response." },
+          { q:"What would you have to believe about your work for releasing it now to be acceptable?", ctx:"Release-enabling belief pressure — identify the belief that would make this possible." }
+        ]
+      }
+    },
+    {
+      id: "misalignment",
+      label: "Direction Doubt",
+      keywords: ["wrong path","not aligned","this isn't it","off track","doesn't feel right","wrong direction","supposed to","not meant for","misaligned","shouldn't be doing this"],
+      lenses: {
+        cognitive: [
+          { q:"What criteria are you using to evaluate alignment — and did you define them, or did they arrive from outside?", ctx:"Criteria origin pressure — an external alignment standard may be producing internal misalignment signal." },
+          { q:"What are you comparing this against — and is that comparison point real or constructed?", ctx:"Comparison basis pressure — the reference point for misalignment may be imagined rather than actual." },
+          { q:"What would you call this situation if you removed the word 'misaligned' from your vocabulary?", ctx:"Label removal pressure — the label may be closing off more precise descriptions." }
+        ],
+        sensory: [
+          { q:"What specifically feels off — pace, energy, clarity, or something else?", ctx:"Signal specificity pressure — misalignment may have a particular texture that points toward its source." },
+          { q:"If this were aligned, what would feel different that doesn't feel different now?", ctx:"Contrast pressure — naming the expected sensation of alignment may reveal what alignment actually requires." },
+          { q:"What does alignment feel like when you've had it — and how long does that feeling typically last?", ctx:"Duration pressure — if alignment is transient, the current signal may not indicate structural misalignment." }
+        ],
+        emotional: [
+          { q:"What emotion signals misalignment — and is it present continuously or intermittently?", ctx:"Continuity pressure — a continuous signal has different implications than an intermittent one." },
+          { q:"What feeling are you interpreting as 'wrong direction' — and what else could produce that feeling?", ctx:"Interpretation audit pressure — the feeling may have multiple possible sources beyond directional misalignment." },
+          { q:"What would you feel if you discovered this is actually the right path?", ctx:"Confirmation resistance pressure — the response to possible alignment confirmation may be informative." }
+        ],
+        experiential: [
+          { q:"Where have you followed a similar signal before — and where did it lead?", ctx:"Signal track record pressure — past responses to this kind of feeling have outcomes worth examining." },
+          { q:"When has this feeling been correct about misalignment — and when has it been wrong?", ctx:"Accuracy audit pressure — the signal has a track record. What does it actually predict?" },
+          { q:"What pattern does this resemble from your history — and what did you do then?", ctx:"Pattern recognition pressure — the current signal may have a historical signature with a documented response." }
+        ],
+        belief: [
+          { q:"What belief defines what 'right' should feel like — and where did that definition originate?", ctx:"Right-feeling belief pressure — the phenomenology of alignment may be culturally or relationally defined." },
+          { q:"What are you assuming alignment guarantees that may not be guaranteed?", ctx:"Alignment promise belief pressure — the expected benefits of alignment may not be causally connected to alignment itself." },
+          { q:"What would you have to believe about this path for misalignment to not be the interpretation?", ctx:"Reframe-enabling belief pressure — identify what belief would change the reading of the same evidence." }
+        ]
+      }
+    }
+  ]
+};
+
+// ═══════════════════════════════════════════════════════════════
+// HYPOTHETICAL MATRIX LIBRARY
+// ═══════════════════════════════════════════════════════════════
+const HYPOTHETICAL_LIBRARY = {
+  assumption: [
+    { axis:"Assumption Inversion", if:"What if the core assumption holding this situation together is false?", then:"Name the assumption. Test what would remain true without it.", irresolvable:"What changes in your response if you can't verify whether the assumption is accurate?", tag:"foundational" },
+    { axis:"Assumption Inversion", if:"What if the problem you've named isn't the actual problem?", then:"Describe what the actual problem might be if the stated one is a symptom.", irresolvable:"What would you have to give up to investigate this seriously?", tag:"reframe" },
+    { axis:"Assumption Inversion", if:"What if the most important variable is the one you've classified as fixed?", then:"Name the variable you've treated as given. What changes when you make it movable?", irresolvable:"If you don't know which variable is actually fixed, how do you decide where to apply pressure?", tag:"structure" }
+  ],
+  obstacle: [
+    { axis:"Obstacle Reframe", if:"What if the obstacle you're experiencing is load-bearing — removing it would collapse something important?", then:"Name what the obstacle might be structurally supporting.", irresolvable:"If the obstacle is both blocking progress and structurally necessary, what does that mean for how you respond?", tag:"structural" },
+    { axis:"Obstacle Reframe", if:"What if the obstacle is pointing toward the actual direction rather than blocking it?", then:"Describe what the obstacle might be indicating rather than preventing.", irresolvable:"What changes in your next move if you swap which one you're treating as the signal?", tag:"directional" },
+    { axis:"Obstacle Reframe", if:"What if you built the obstacle — and it's performing a function you haven't named?", then:"Name the function this obstacle might be serving for you.", irresolvable:"If you built it, what does removing it reveal about you that you're not ready to see?", tag:"constructed" }
+  ],
+  inversion: [
+    { axis:"Inversion Frame", if:"What if the approach that feels right is producing the wrong result — and the approach that feels wrong would produce the right one?", then:"Describe the wrong-feeling approach. What does it produce if taken seriously?", irresolvable:"How do you decide which direction to trust when feeling and evidence are pointing at different things?", tag:"direction" },
+    { axis:"Inversion Frame", if:"What if strength in this situation is the source of limitation — not weakness?", then:"Name the strength. What does it systematically prevent?", irresolvable:"If your biggest asset is also your primary constraint, how do you calibrate when to use it?", tag:"strength" },
+    { axis:"Inversion Frame", if:"What if the thing you're most certain about is the thing most worth questioning?", then:"Name what you're most certain about. What would change if it were wrong?", irresolvable:"How do you investigate certainty that feels too important to examine?", tag:"certainty" }
+  ],
+  stillness: [
+    { axis:"Stillness Frame", if:"What if doing nothing is the most sophisticated response available?", then:"Describe what 'doing nothing' would actually look like — and what it would produce.", irresolvable:"How do you distinguish strategic stillness from avoidance when the behavior is identical?", tag:"action" },
+    { axis:"Stillness Frame", if:"What if the urgency you feel is generated by the situation, not the actual stakes?", then:"Separate the felt urgency from the actual consequence timeline.", irresolvable:"If the urgency is manufactured but the stakes are real, how do you hold both?", tag:"urgency" },
+    { axis:"Stillness Frame", if:"What if the situation resolves better without your direct intervention?", then:"Describe what self-resolution might look like here.", irresolvable:"What would you have to believe about yourself to accept that not intervening is valid?", tag:"agency" }
+  ]
+};
+
+// ═══════════════════════════════════════════════════════════════
+// TENSION LIBRARY
+// ═══════════════════════════════════════════════════════════════
+const TENSION_LIBRARY = [
+  { a:"You know what to do. You are not doing it.", b:"Not doing it is also a decision — one that may be more accurate than the named one.", prompt:"What is the decision that not-doing is actually making?" },
+  { a:"This situation has a clear answer.", b:"Every clear answer is an answer to a specific question — which question are you answering?", prompt:"What question would produce a different answer?" },
+  { a:"You are ahead of where you expected to be.", b:"The expectation you set may have been calibrated to produce this exact feeling.", prompt:"Who calibrated the expectation you're measuring against?" },
+  { a:"Progress requires change.", b:"Some of what you're calling necessary change is optional variation on what already works.", prompt:"What has worked without changing that you're considering replacing?" },
+  { a:"The problem is external.", b:"Your relationship to the external problem has more leverage than the problem itself.", prompt:"What would change about the external problem if your relationship to it shifted?" },
+  { a:"Speed matters here.", b:"Speed applied to an incorrect diagnosis produces fast, wrong results.", prompt:"Have you diagnosed the situation, or have you named the symptom?" },
+  { a:"You need more information before deciding.", b:"The information you already have may be sufficient; the delay may not be epistemic.", prompt:"What decision would you make if you accepted that you already know enough?" },
+  { a:"The stakes are high.", b:"High-stakes framing often compresses the option space beyond what the actual stakes require.", prompt:"What options disappear from high-stakes framing that would be available in low-stakes framing?" }
+];
+
+// ═══════════════════════════════════════════════════════════════
+// TERMINUS SETS
+// ═══════════════════════════════════════════════════════════════
+const TERMINUS_SETS = [
+  [
+    "What would you need to believe to move forward — and is believing it accurate?",
+    "What is the most expensive thing you are protecting?",
+    "What have you already decided that you're still pretending is open?"
+  ],
+  [
+    "What question is this situation actually asking you — rather than the question you've assigned to it?",
+    "What are you optimizing for without saying it?",
+    "What would you do if the outcome didn't reflect on you personally?"
+  ],
+  [
+    "What would this look like in five years if nothing changed?",
+    "What are you not saying — and to whom?",
+    "What belief is load-bearing here that you've never examined?"
+  ],
+  [
+    "Where is the signal you keep dismissing as noise?",
+    "What is the version of this that would make you proud — and what's stopping it?",
+    "What would you advise someone else in exactly your situation?"
+  ]
+];
+
+// ═══════════════════════════════════════════════════════════════
+// FALLBACK PERSPECTIVES
+// ═══════════════════════════════════════════════════════════════
+const FALLBACK_PERSPECTIVES = {
+  cognitive: { question:"What sequence are you running, and what breaks if step two is removed?", context:"Structure pressure — the order you've imposed may be the constraint, not the content." },
+  sensory: { question:"What input channel are you over-relying on, and what are you filtering to make that possible?", context:"Attention pressure — what you're noticing is shaped by what you've already decided to ignore." },
+  emotional: { question:"What would this situation look like if the current dominant emotion dropped to zero?", context:"Climate pressure — the dominant signal may be obscuring the one that's actually load-bearing." },
+  experiential: { question:"What past situation is this most like, and where exactly does the analogy break down?", context:"Pattern pressure — the heuristic running here may have been encoded in a different terrain." },
+  belief: { question:"What are you treating as the floor — and what happens if it isn't?", context:"Foundation pressure — the load-bearing assumption is rarely the one being examined." }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// NJ DATA
+// ═══════════════════════════════════════════════════════════════
+const NJ_ZONES = [
+  { name:"Secaucus Junction", sub:"Five-dimension interchange", frame:"You are the Secaucus Junction of your own situation — the switching point where multiple lines converge without a clear through-route. What if the absence of a direct path is the design, not the problem?" },
+  { name:"The Turnpike Mind", sub:"High-speed, structured, tolled", frame:"You are running on the Turnpike architecture — fast lanes, clear markings, predictable exits. What are you paying in tolls to maintain that speed — and what's on the local route you keep passing?" },
+  { name:"Garden State Parkway", sub:"Shore-bound, seasonal pressure", frame:"This situation has shore-bound directionality — everyone moving toward the same endpoint at the same time. What happens if you reverse the direction entirely?" },
+  { name:"Pine Barrens", sub:"Vast interior, off-grid", frame:"You've entered the Pine Barrens of this problem — the interior that looks featureless but has its own navigation logic. What are you trying to map that doesn't have roads?" },
+  { name:"Hudson Line", sub:"Cross-state, under pressure", frame:"You're at the crossing point — the moment where the New Jersey logic has to reconcile with what's on the other side. What are you carrying that works here but won't work there?" }
+];
+
+// ═══════════════════════════════════════════════════════════════
+// VAL EXPLANATIONS
+// ═══════════════════════════════════════════════════════════════
+const VAL_EXPLANATIONS = {
+  direct: "Direct Pressure active: constraints lead with the most confrontational frame first.",
+  space: "Space to Think active: constraints open with the broadest framing before narrowing.",
+  pattern: "Pattern-First active: constraints prioritize experiential and behavioral lens first.",
+  somatic: "Somatic Awareness active: sensory and physical signal constraints surface first.",
+  strategic: "Strategic Frame active: cognitive and systemic constraints take priority."
+};
+
+// VAL lens priority ordering — FIXED: now actually applied to constraint sampling
+const VAL_LENS_ORDER = {
+  direct: ["belief","emotional","cognitive","experiential","sensory"],
+  space: ["cognitive","sensory","experiential","emotional","belief"],
+  pattern: ["experiential","cognitive","sensory","emotional","belief"],
+  somatic: ["sensory","emotional","experiential","cognitive","belief"],
+  strategic: ["cognitive","belief","experiential","sensory","emotional"]
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ENGINE STATE
+// ═══════════════════════════════════════════════════════════════
+let state = {
+  situation: "",
+  matchedPattern: null,
+  blendPattern: null,
+  activeLens: null,
+  depth: 0,
+  history: [],
+  njMode: false,
+  valPrefs: [],
+  selectedHyp: [],
+  hypPool: [],
+  sessionData: null
+};
+
+const LENS_KEYS = ["cognitive","sensory","emotional","experiential","belief"];
+const LENS_COLORS = { cognitive:"var(--f-cog)", sensory:"var(--f-sen)", emotional:"var(--f-emo)", experiential:"var(--f-exp)", belief:"var(--f-bel)" };
+const LENS_NAMES = { cognitive:"Cognitive Architecture", sensory:"Sensory Integration", emotional:"Emotional Climate", experiential:"Experiential Heuristics", belief:"Belief Infrastructure" };
+
+// ═══════════════════════════════════════════════════════════════
+// PATTERN MATCHING — scored with multi-word weighting
+// ═══════════════════════════════════════════════════════════════
+function matchPattern(input) {
+  const lower = input.toLowerCase();
+  let scores = [];
+  PATTERN_LIBRARY.patterns.forEach(p => {
+    let score = 0;
+    p.keywords.forEach(k => {
+      if (k.includes(" ")) { if (lower.includes(k)) score += 2; }
+      else { if (lower.includes(k)) score += 1; }
+    });
+    if (score > 0) scores.push({ pattern: p, score });
+  });
+  scores.sort((a,b) => b.score - a.score);
+  if (scores.length === 0) return { primary: null, blend: null };
+  const primary = scores[0].pattern;
+  const blend = (scores.length > 1 && scores[1].score >= scores[0].score * 0.65) ? scores[1].pattern : null;
+  return { primary, blend };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LENS SAMPLING — FIXED: genuine variance, no repetition within session
+// Uses a per-lens-per-depth hash seeded with situation + depth to get deterministic
+// variety without repeating the same index across depth increases.
+// ═══════════════════════════════════════════════════════════════
+function sampleLens(lensKey, pattern, depth) {
+  // Create a session-stable but depth-varied index
+  const situationSeed = state.situation.length * 7 + state.situation.charCodeAt(0);
+  const lensIndex = LENS_KEYS.indexOf(lensKey);
+  const rawIndex = (situationSeed + lensIndex * 13 + depth * 17) % 3;
+
+  if (pattern && pattern.lenses[lensKey]) {
+    const pool = pattern.lenses[lensKey];
+    return pool[rawIndex];
+  }
+  return { question: FALLBACK_PERSPECTIVES[lensKey].question, context: FALLBACK_PERSPECTIVES[lensKey].context };
+}
+
+// For constraint layer — samples 3 cards, ensuring no duplicates across depths
+function sampleConstraintPool(lensKey, pattern, depth) {
+  const pool = [];
+  const used = new Set();
+  for (let d = 0; d < 6; d++) {
+    const s = sampleLens(lensKey, pattern, d);
+    const key = s.question.substring(0,30);
+    if (!used.has(key)) {
+      used.add(key);
+      pool.push(s);
+      if (pool.length === 3) break;
+    }
+  }
+  // Ensure we always have 3 items
+  while (pool.length < 3) {
+    const fallback = FALLBACK_PERSPECTIVES[lensKey];
+    pool.push({ question: fallback.question, context: fallback.context });
+  }
+
+  // Apply VAL ordering if active — rotate to put preferred lens type first
+  if (state.valPrefs.length > 0) {
+    const pref = state.valPrefs[0];
+    const preferredOrder = VAL_LENS_ORDER[pref];
+    const lensPosition = preferredOrder.indexOf(lensKey);
+    // If lens is in high priority position (0,1), surface most direct constraint
+    if (lensPosition <= 1) {
+      // Keep pool[0] as is — it's the most confrontational for high-priority lenses
+      return pool;
+    } else if (lensPosition >= 3) {
+      // Rotate so we get a softer entry for lower-priority lenses
+      return [pool[1], pool[2], pool[0]];
+    }
+  }
+  return pool;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MAIN ENGINE RUN
+// ═══════════════════════════════════════════════════════════════
+function runEngine() {
+  const input = document.getElementById("sit-input").value.trim();
+  if (input.length < 8) { showError("Situation too brief. Add more context."); return; }
+  clearError();
+  state.situation = input;
+  state.depth = 0;
+  state.history = [];
+  state.activeLens = null;
+  state.selectedHyp = [];
+  state.hypPool = [];
+
+  const btn = document.getElementById("run-btn");
+  btn.classList.add("loading"); btn.disabled = true;
+  btn.querySelector(".rbtxt").textContent = "Refracting…";
+
+  setTimeout(() => {
+    const match = matchPattern(input);
+    state.matchedPattern = match.primary;
+    state.blendPattern = match.blend;
+
+    // Update pattern indicator
+    const pi = document.getElementById("pattern-indicator");
+    if (match.primary) {
+      document.getElementById("pattern-indicator-name").textContent = match.primary.label;
+      const blendEl = document.getElementById("pattern-indicator-blend");
+      blendEl.textContent = match.blend ? `+ ${match.blend.label}` : "";
+      pi.classList.add("vis");
+    } else {
+      pi.classList.remove("vis");
+    }
+
+    // NJ mode
+    if (state.njMode) {
+      const zone = NJ_ZONES[Math.floor(Math.random() * NJ_ZONES.length)];
+      const strip = document.getElementById("nj-strip");
+      document.getElementById("nj-zone-name").textContent = zone.name;
+      document.getElementById("nj-zone-sub").textContent = zone.sub;
+      strip.classList.add("on");
+    } else {
+      document.getElementById("nj-strip").classList.remove("on");
+    }
+
+    buildPerspectives();
+    document.getElementById("nav-status").classList.add("on");
+
+    btn.classList.remove("loading");
+    btn.innerHTML = '<span class="rbtxt">Refract Again →</span>';
+    btn.disabled = false;
+  }, 900);
+}
+
+function buildPerspectives() {
+  const grid = document.getElementById("persp-grid");
+  grid.innerHTML = "";
+  document.getElementById("sit-echo-text").textContent = state.situation.length > 60 ? state.situation.substring(0,60) + "…" : state.situation;
+
+  // Determine lens display order based on VAL prefs
+  let lensOrder = [...LENS_KEYS];
+  if (state.valPrefs.length > 0) {
+    const pref = state.valPrefs[0];
+    if (VAL_LENS_ORDER[pref]) lensOrder = VAL_LENS_ORDER[pref];
+  }
+
+  lensOrder.forEach((lk, i) => {
+    const sample = sampleLens(lk, state.matchedPattern, 0);
+    const card = document.createElement("div");
+    card.className = "p-card";
+    card.innerHTML = `
+      <div class="p-card-accent" style="background:${LENS_COLORS[lk]};"></div>
+      <div class="p-card-facet" style="color:${LENS_COLORS[lk]};">Lens ${String(LENS_KEYS.indexOf(lk)+1).padStart(2,"0")} · ${LENS_NAMES[lk]}</div>
+      <div class="p-card-q">${sample.question}</div>
+      <div class="p-card-ctx">${sample.context}</div>
+      <div class="p-card-cue">Select this lens</div>
+    `;
+    card.onclick = () => selectLens(card, lk);
+    grid.appendChild(card);
+    setTimeout(() => card.classList.add("loaded"), 80 * i);
+  });
+
+  showSection("persp-section");
+  hideSection("constraint-section");
+  hideSection("hyp-section");
+  hideSection("terminus-section");
+}
+
+function selectLens(card, lensKey) {
+  document.querySelectorAll(".p-card").forEach(c => c.classList.remove("chosen"));
+  card.classList.add("chosen");
+  state.activeLens = lensKey;
+  state.depth = 0;
+  if (!state.history.includes(lensKey)) state.history.push(lensKey);
+  buildHistTags();
+  buildConstraintLayer(lensKey);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CONSTRAINT LAYER
+// ═══════════════════════════════════════════════════════════════
+function buildConstraintLayer(lensKey) {
+  const color = LENS_COLORS[lensKey];
+  document.getElementById("constraint-dim-label").textContent = `→ ${LENS_NAMES[lensKey]} · Constraint Layer · Depth ${state.depth + 1}`;
+  document.getElementById("constraint-dim-label").style.color = "var(--gold)";
+
+  const grid = document.getElementById("constraint-grid");
+  grid.innerHTML = "";
+
+  // FIXED: use sampleConstraintPool for proper variance + blend integration
+  const primaryPool = sampleConstraintPool(lensKey, state.matchedPattern, state.depth);
+
+  // Blend integration at card level — replace last card with blend pattern if available
+  const pool = [...primaryPool];
+  if (state.blendPattern && state.depth % 2 === 0) {
+    pool[2] = sampleLens(lensKey, state.blendPattern, state.depth);
+  }
+
+  const types = ["Direct Frame","Context Frame","Pressure Frame"];
+  pool.forEach((item, i) => {
+    const card = document.createElement("div");
+    card.className = "constraint-card";
+    card.innerHTML = `
+      <div class="constraint-card-type">${types[i]}${i === 2 && state.blendPattern && state.depth % 2 === 0 ? ' · Blend Layer' : ''}</div>
+      <div class="constraint-card-q">${item.question}</div>
+      <div class="constraint-card-follow">${item.context}</div>
+    `;
+    card.onclick = () => {
+      document.querySelectorAll(".constraint-card").forEach(c => c.classList.remove("chosen"));
+      card.classList.add("chosen");
+      buildTensionBox(lensKey);
+      // FIXED: only build hyp matrix if not already built, or if lens changed
+      if (!document.getElementById("hyp-section").classList.contains("vis") || state.depth === 0) {
+        buildHypotheticalMatrix(lensKey, item);
+      }
+    };
+    grid.appendChild(card);
+  });
+
+  document.getElementById("tension-box").classList.remove("vis");
+  document.getElementById("nj-frame").classList.remove("vis");
+  document.getElementById("deeper-btn").disabled = state.depth >= 2;
+  showSection("constraint-section");
+
+  // Auto-build hypothetical matrix on first lens selection only
+  if (state.depth === 0) {
+    buildHypotheticalMatrix(lensKey, pool[0]);
+  }
+}
+
+function buildTensionBox(lensKey) {
+  const t = TENSION_LIBRARY[Math.floor(Math.random() * TENSION_LIBRARY.length)];
+  const tf = document.getElementById("tension-frames");
+  tf.innerHTML = `
+    <div class="tension-frame">
+      <div class="tension-frame-label" style="color:${LENS_COLORS[lensKey]};">Frame A</div>
+      <div class="tension-frame-text">${t.a}</div>
+    </div>
+    <div class="tension-frame">
+      <div class="tension-frame-label" style="color:${LENS_COLORS[lensKey]};">Frame B</div>
+      <div class="tension-frame-text">${t.b}</div>
+    </div>
+  `;
+  document.getElementById("tension-prompt-q").textContent = t.prompt;
+  document.getElementById("tension-box").classList.add("vis");
+
+  if (state.njMode) {
+    const zone = NJ_ZONES[Math.floor(Math.random() * NJ_ZONES.length)];
+    document.getElementById("nj-frame-label").textContent = `Garden State Grid · ${zone.name}`;
+    document.getElementById("nj-frame-q").textContent = zone.frame;
+    document.getElementById("nj-frame").classList.add("vis");
+  }
+
+  showSection("terminus-section");
+  buildTerminus();
+  updateSessionData();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HYPOTHETICAL MATRIX — FIXED: persists through goDeeper()
+// ═══════════════════════════════════════════════════════════════
+function buildHypotheticalMatrix(lensKey, activeConstraint) {
+  const pool = [];
+  ["assumption","obstacle","inversion","stillness"].forEach(type => {
+    const arr = HYPOTHETICAL_LIBRARY[type];
+    const pick = arr[Math.floor(Math.random() * arr.length)];
+    pool.push({ ...pick, type });
+  });
+  state.hypPool = pool;
+  state.selectedHyp = []; // Only reset when explicitly building new matrix
+
+  renderHypMatrix(lensKey, pool);
+  showSection("hyp-section");
+}
+
+function renderHypMatrix(lensKey, pool) {
+  const matrix = document.getElementById("hyp-matrix");
+  matrix.innerHTML = "";
+  document.getElementById("collision-box").classList.remove("vis");
+
+  pool.forEach((h, i) => {
+    const card = document.createElement("div");
+    card.className = "hyp-card";
+    card.dataset.idx = i;
+    card.innerHTML = `
+      <div class="hyp-card-tag">${h.tag}</div>
+      <div class="hyp-card-axis">${h.axis}</div>
+      <div class="hyp-card-if">${h.if}</div>
+      <div class="hyp-card-then">${h.then}</div>
+    `;
+    card.onclick = () => toggleHyp(card, i);
+    matrix.appendChild(card);
+  });
+}
+
+function toggleHyp(card, idx) {
+  const isActive = card.classList.contains("active");
+  if (isActive) {
+    card.classList.remove("active");
+    state.selectedHyp = state.selectedHyp.filter(i => i !== idx);
+  } else {
+    if (state.selectedHyp.length >= 2) {
+      const oldest = state.selectedHyp.shift();
+      document.querySelector(`.hyp-card[data-idx="${oldest}"]`)?.classList.remove("active");
+    }
+    card.classList.add("active");
+    state.selectedHyp.push(idx);
+  }
+
+  if (state.selectedHyp.length === 2) {
+    buildCollision(state.selectedHyp[0], state.selectedHyp[1]);
+  } else {
+    document.getElementById("collision-box").classList.remove("vis");
+  }
+}
+
+// FIXED: collision uses both hypotheticals' irresolvable questions
+function buildCollision(idxA, idxB) {
+  const ha = state.hypPool[idxA];
+  const hb = state.hypPool[idxB];
+  const lensKey = state.activeLens || "cognitive";
+
+  const cf = document.getElementById("collision-frames");
+  cf.innerHTML = `
+    <div class="collision-frame">
+      <div class="collision-frame-label" style="color:${LENS_COLORS[lensKey]};">Hypothetical A — ${ha.axis}</div>
+      <div class="collision-frame-text">${ha.if}</div>
+    </div>
+    <div class="collision-frame">
+      <div class="collision-frame-label" style="color:${LENS_COLORS[lensKey]};">Hypothetical B — ${hb.axis}</div>
+      <div class="collision-frame-text">${hb.if}</div>
+    </div>
+  `;
+
+  // FIXED: synthesize both irresolvable questions into a single collision question
+  const collisionQ = `${ha.irresolvable} — And if that can't be answered: ${hb.irresolvable}`;
+  document.getElementById("collision-q-text").textContent = collisionQ;
+  document.getElementById("collision-box").classList.add("vis");
+}
+
+function rerollHypotheticals() {
+  if (state.activeLens) {
+    buildHypotheticalMatrix(state.activeLens, {});
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TERMINUS
+// ═══════════════════════════════════════════════════════════════
+function buildTerminus() {
+  const set = TERMINUS_SETS[Math.floor(Math.random() * TERMINUS_SETS.length)];
+  const locks = document.getElementById("terminus-locks");
+  locks.innerHTML = "";
+  set.forEach((q, i) => {
+    locks.innerHTML += `
+      <div class="terminus-lock">
+        <div class="terminus-lock-num">Residual Tension 0${i+1}</div>
+        <div class="terminus-lock-q">${q}</div>
+      </div>
+    `;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// JSON SCHEMA OUTPUT — new in v5.1
+// ═══════════════════════════════════════════════════════════════
+function updateSessionData() {
+  if (!state.activeLens) return;
+
+  const chosenConstraint = document.querySelector(".constraint-card.chosen .constraint-card-q");
+  const tensionA = document.querySelector(".tension-frame:first-child .tension-frame-text");
+  const tensionB = document.querySelector(".tension-frame:last-child .tension-frame-text");
+  const terminusEls = document.querySelectorAll(".terminus-lock-q");
+
+  state.sessionData = {
+    schema_version: "1.0",
+    timestamp: new Date().toISOString(),
+    input: {
+      situation: state.situation,
+      char_count: state.situation.length
+    },
+    pattern_detection: {
+      primary: state.matchedPattern ? state.matchedPattern.id : null,
+      primary_label: state.matchedPattern ? state.matchedPattern.label : null,
+      blend: state.blendPattern ? state.blendPattern.id : null,
+      blend_label: state.blendPattern ? state.blendPattern.label : null
+    },
+    active_lens: {
+      key: state.activeLens,
+      name: LENS_NAMES[state.activeLens],
+      depth: state.depth
+    },
+    constraint: {
+      selected: chosenConstraint ? chosenConstraint.textContent : null,
+      tension_frame_a: tensionA ? tensionA.textContent : null,
+      tension_frame_b: tensionB ? tensionB.textContent : null
+    },
+    hypothetical_matrix: {
+      selected_count: state.selectedHyp.length,
+      selected: state.selectedHyp.map(i => ({
+        axis: state.hypPool[i]?.axis,
+        if: state.hypPool[i]?.if,
+        irresolvable: state.hypPool[i]?.irresolvable
+      }))
+    },
+    terminus: {
+      residual_tensions: Array.from(terminusEls).map(el => el.textContent)
+    },
+    val_preferences: state.valPrefs,
+    nj_mode: state.njMode,
+    lens_history: state.history
+  };
+
+  // Update export box if panel is visible
+  const panel = document.getElementById("json-export-panel");
+  if (panel.classList.contains("vis")) {
+    document.getElementById("json-export-code").value = JSON.stringify(state.sessionData, null, 2);
+  }
+}
+
+function toggleJSONPanel() {
+  const panel = document.getElementById("json-export-panel");
+  if (panel.classList.contains("vis")) {
+    panel.classList.remove("vis");
+  } else {
+    panel.classList.add("vis");
+    updateSessionData();
+    if (state.sessionData) {
+      document.getElementById("json-export-code").value = JSON.stringify(state.sessionData, null, 2);
+    } else {
+      document.getElementById("json-export-code").value = '{"message": "Run a situation first to generate JSON output."}';
+    }
+    panel.scrollIntoView({ behavior:"smooth", block:"nearest" });
+  }
+}
+
+function copyJSON() {
+  const box = document.getElementById("json-export-code");
+  navigator.clipboard.writeText(box.value).then(() => {
+    const btn = document.querySelector(".json-copy-btn");
+    btn.textContent = "Copied →";
+    setTimeout(() => { btn.textContent = "Copy JSON →"; }, 2000);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EXTERNAL PROMPT GENERATION — doctrine-enforced
+// ═══════════════════════════════════════════════════════════════
+function generateExternalPrompt() {
+  if (!state.activeLens) { showError("Select a lens first."); return; }
+  const lensName = LENS_NAMES[state.activeLens];
+  const chosen = document.querySelector(".constraint-card.chosen .constraint-card-q");
+  const currentConstraint = chosen ? chosen.textContent : "the current constraint";
+
+  const prompt = `System: You are a structural pressure generator. Your only function is to generate additional pressure on a situation through a specific lens. You do NOT advise. You do NOT diagnose. You do NOT resolve. You do NOT use "you should" language. You do NOT provide conclusions or insights. You do NOT declare what is true about the person or situation. You generate questions that hold open rather than close.
+
+Situation: ${state.situation}
+
+Active lens: ${lensName}
+
+Current constraint being applied: ${currentConstraint}
+
+Generate 3 additional pressure questions through the ${lensName} lens only. Each question should:
+1. Force thinking without directing it
+2. Name a specific structural element of the situation
+3. Hold tension rather than resolve it
+4. NOT contain advice, recommendations, or conclusions
+5. NOT declare anything to be true about the person
+
+Return only the 3 questions with a one-sentence structural framing note for each. No preamble. No conclusion.`;
+
+  const area = document.getElementById("expand-prompt-area");
+  document.getElementById("expand-prompt-box").value = prompt;
+  area.classList.add("on");
+  area.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function copyExpandPrompt() {
+  const box = document.getElementById("expand-prompt-box");
+  navigator.clipboard.writeText(box.value).then(() => {
+    const btn = document.getElementById("expand-copy-btn");
+    btn.textContent = "Copied →";
+    setTimeout(() => { btn.textContent = "Copy Prompt"; }, 2000);
+  });
+}
+
+function injectExpansion() {
+  const text = document.getElementById("expand-return-area").value.trim();
+  if (!text) return;
+  document.getElementById("injected-text").textContent = text;
+  document.getElementById("injected-layer").classList.add("vis");
+  document.getElementById("expand-return-area").value = "";
+  document.getElementById("expand-prompt-area").classList.remove("on");
+}
+
+function closeInjection() {
+  document.getElementById("injected-layer").classList.remove("vis");
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DEEPER / REROUTE — FIXED: preserves hyp matrix state
+// ═══════════════════════════════════════════════════════════════
+function goDeeper() {
+  if (!state.activeLens) return;
+  state.depth++;
+  if (state.depth >= 3) { document.getElementById("deeper-btn").disabled = true; }
+  // FIXED: rebuild constraint layer but do NOT rebuild hypothetical matrix
+  buildConstraintLayerDepthOnly(state.activeLens);
+}
+
+function buildConstraintLayerDepthOnly(lensKey) {
+  const grid = document.getElementById("constraint-grid");
+  grid.innerHTML = "";
+  document.getElementById("constraint-dim-label").textContent = `→ ${LENS_NAMES[lensKey]} · Constraint Layer · Depth ${state.depth + 1}`;
+
+  const pool = sampleConstraintPool(lensKey, state.matchedPattern, state.depth);
+  if (state.blendPattern && state.depth % 2 === 0) {
+    pool[2] = sampleLens(lensKey, state.blendPattern, state.depth);
+  }
+
+  const types = ["Direct Frame","Context Frame","Pressure Frame"];
+  pool.forEach((item, i) => {
+    const card = document.createElement("div");
+    card.className = "constraint-card";
+    card.innerHTML = `
+      <div class="constraint-card-type">${types[i]}${i === 2 && state.blendPattern ? ' · Blend' : ''}</div>
+      <div class="constraint-card-q">${item.question}</div>
+      <div class="constraint-card-follow">${item.context}</div>
+    `;
+    card.onclick = () => {
+      document.querySelectorAll(".constraint-card").forEach(c => c.classList.remove("chosen"));
+      card.classList.add("chosen");
+      buildTensionBox(lensKey);
+    };
+    grid.appendChild(card);
+  });
+
+  document.getElementById("tension-box").classList.remove("vis");
+  document.getElementById("deeper-btn").disabled = state.depth >= 2;
+
+  // Scroll to constraint section without disturbing hyp section
+  document.getElementById("constraint-section").scrollIntoView({ behavior:"smooth", block:"nearest" });
+}
+
+function rerouteAngles() {
+  state.depth = 0;
+  buildPerspectives();
+}
+
+function resetEngine() {
+  document.getElementById("sit-input").value = "";
+  document.getElementById("char-count").textContent = "0 / 400";
+  document.getElementById("run-btn").disabled = true;
+  document.getElementById("nav-status").classList.remove("on");
+  document.getElementById("pattern-indicator").classList.remove("vis");
+  document.getElementById("nj-strip").classList.remove("on");
+  document.getElementById("json-export-panel").classList.remove("vis");
+  hideSection("persp-section");
+  hideSection("constraint-section");
+  hideSection("hyp-section");
+  hideSection("terminus-section");
+  state = { situation:"", matchedPattern:null, blendPattern:null, activeLens:null, depth:0, history:[], njMode:state.njMode, valPrefs:state.valPrefs, selectedHyp:[], hypPool:[], sessionData:null };
+  document.querySelectorAll(".chip").forEach(c => c.classList.remove("on"));
+  window.scrollTo({ top: document.getElementById("engine").offsetTop - 80, behavior:"smooth" });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SECTION VISIBILITY
+// ═══════════════════════════════════════════════════════════════
+function showSection(id) {
+  const el = document.getElementById(id);
+  el.classList.add("vis");
+  setTimeout(() => { el.classList.add("in"); el.scrollIntoView({ behavior:"smooth", block:"nearest" }); }, 30);
+}
+
+function hideSection(id) {
+  const el = document.getElementById(id);
+  el.classList.remove("vis","in");
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INPUT + CHIP HANDLING
+// ═══════════════════════════════════════════════════════════════
+function updateChar() {
+  const val = document.getElementById("sit-input").value;
+  const cc = document.getElementById("char-count");
+  cc.textContent = `${val.length} / 400`;
+  cc.classList.toggle("warn", val.length > 360);
+  document.getElementById("run-btn").disabled = val.length < 8;
+}
+
+function pickChip(el) {
+  document.querySelectorAll(".chip").forEach(c => c.classList.remove("on"));
+  el.classList.add("on");
+  document.getElementById("sit-input").value = el.textContent;
+  updateChar();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// NJ MODE
+// ═══════════════════════════════════════════════════════════════
+function toggleNJ() {
+  state.njMode = !state.njMode;
+  const btn = document.getElementById("nj-toggle");
+  btn.classList.toggle("nj-on", state.njMode);
+  btn.textContent = state.njMode ? "NJ Mode: ON" : "NJ Mode";
+}
+
+// ═══════════════════════════════════════════════════════════════
+// VAL SYSTEM — FIXED: actually reorders perspectives on activation
+// ═══════════════════════════════════════════════════════════════
+function toggleVAL(el, pref) {
+  el.classList.toggle("on");
+  if (el.classList.contains("on")) {
+    state.valPrefs.push(pref);
+  } else {
+    state.valPrefs = state.valPrefs.filter(p => p !== pref);
+  }
+  const exp = document.getElementById("val-explanation");
+  if (state.valPrefs.length > 0) {
+    exp.innerHTML = state.valPrefs.map(p => `<em>${VAL_EXPLANATIONS[p]}</em>`).join(" · ");
+  } else {
+    exp.innerHTML = 'Select reading preferences above. The system adjusts <em>which constraints surface first</em> — not the doctrine.';
+  }
+
+  // FIXED: if a situation is already loaded, rebuild perspectives with new VAL order
+  if (state.situation && document.getElementById("persp-section").classList.contains("vis")) {
+    buildPerspectives();
+  }
+}
+
+function resetVAL() {
+  state.valPrefs = [];
+  document.querySelectorAll(".val-toggle").forEach(t => t.classList.remove("on"));
+  document.getElementById("val-explanation").innerHTML = 'Select reading preferences above. The system adjusts <em>which constraints surface first</em> — not the doctrine.';
+  if (state.situation && document.getElementById("persp-section").classList.contains("vis")) {
+    buildPerspectives();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HISTORY TAGS
+// ═══════════════════════════════════════════════════════════════
+function buildHistTags() {
+  const row = document.getElementById("hist-row");
+  const container = document.getElementById("hist-tags");
+  if (state.history.length === 0) { row.classList.remove("vis"); return; }
+  container.innerHTML = state.history.map(lk =>
+    `<span class="hist-tag" style="border-color:${LENS_COLORS[lk]};color:${LENS_COLORS[lk]};">${LENS_NAMES[lk]}</span>`
+  ).join("");
+  row.classList.add("vis");
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ERROR
+// ═══════════════════════════════════════════════════════════════
+function showError(msg) {
+  const bar = document.getElementById("err-bar");
+  bar.textContent = msg;
+  bar.classList.add("on");
+  setTimeout(() => bar.classList.remove("on"), 4000);
+}
+function clearError() {
+  document.getElementById("err-bar").classList.remove("on");
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SYSTEM REVEAL
+// ═══════════════════════════════════════════════════════════════
+function toggleSysReveal() {
+  const el = document.getElementById("sys-reveal");
+  el.classList.toggle("on");
+  if (el.classList.contains("on")) {
+    el.scrollIntoView({ behavior:"smooth" });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FACET INTERACTIVE (How It Works panel)
+// ═══════════════════════════════════════════════════════════════
+const FACET_DATA = {
+  cog: { title:"COGNITIVE", body:"How you structure and sequence thought — before you're aware you're doing it.", constraint:"\"What structure are you using to make this decision? What breaks if that structure is wrong? What are you optimizing for without saying it?\"", color:"var(--f-cog)" },
+  sen: { title:"SENSORY", body:"The translation layer between reality and your usable model of it — shaped before analysis begins.", constraint:"\"What input channel are you over-relying on? What signal are you treating as noise that might be load-bearing?\"", color:"var(--f-sen)" },
+  emo: { title:"EMOTIONAL", body:"Your internal weather system. Not an interruption to intelligence — the intelligence itself.", constraint:"\"What emotion is running as background process right now? What would this situation look like if that emotion dropped to zero?\"", color:"var(--f-emo)" },
+  exp: { title:"EXPERIENTIAL", body:"Compressed lived intelligence — heuristics encoded faster than conscious thought.", constraint:"\"What past situation is this most like? Where exactly does that analogy break down?\"", color:"var(--f-exp)" },
+  bel: { title:"BELIEF", body:"The load-bearing walls. Everything else is constructed on top of them.", constraint:"\"What are you treating as the floor? What happens if it isn't?\"", color:"var(--f-bel)" }
+};
+
+function pickFacet(el, key) {
+  document.querySelectorAll(".facet-row").forEach(r => r.classList.remove("on"));
+  el.classList.add("on");
+  const d = FACET_DATA[key];
+  document.getElementById("fd-title").textContent = d.title;
+  document.getElementById("fd-title").style.color = d.color;
+  document.getElementById("fd-body").textContent = d.body;
+  document.getElementById("fd-body").style.borderColor = d.color;
+  document.getElementById("fd-constraint").textContent = d.constraint;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// NAV SCROLL
+// ═══════════════════════════════════════════════════════════════
+window.addEventListener("scroll", () => {
+  document.getElementById("main-nav").classList.toggle("scrolled", window.scrollY > 40);
+});
+
+// ═══════════════════════════════════════════════════════════════
+// SCROLL REVEAL
+// ═══════════════════════════════════════════════════════════════
+const revObs = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add("in"); });
+}, { threshold: 0.12 });
+document.querySelectorAll(".rev").forEach(el => revObs.observe(el));
+
+// VAL panel visibility — show after first run
+document.getElementById("run-btn").addEventListener("click", () => {
+  setTimeout(() => { document.getElementById("val-panel").classList.add("on"); }, 1800);
+});
+</script>
+</body>
+</html>
